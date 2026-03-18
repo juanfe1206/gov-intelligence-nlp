@@ -1,0 +1,76 @@
+### OS / Editor ###
+.DS_Store
+Thumbs.db
+desktop.ini
+
+.vscode/
+.idea/
+*.code-workspace
+
+### Python ###
+__pycache__/
+*.py[cod]
+*$py.class
+
+.env
+.env.*
+venv/
+env/
+.venv/
+.envrc
+
+*.log
+
+### Jupyter / experiments ###
+.ipynb_checkpoints/
+*.ipynb
+
+### Node / React frontend ###
+node_modules/
+*.tsbuildinfo
+
+# Build output
+dist/
+build/
+.next/
+out/
+
+### Dependencies ###
+poetry.lock
+Pipfile.lock
+poetry.toml
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+### Databases / data dumps ###
+*.db
+*.sqlite3
+*.sqlite
+*.db-journal
+*.sql
+*.tar
+*.gz
+*.zip
+*.parquet
+*.feather
+*.csv
+*.tsv
+data/
+datasets/
+
+### Models / embeddings / checkpoints ###
+models/
+checkpoints/
+artifacts/
+wandb/
+mlruns/
+
+### Cache / temp ###
+.cache/
+tmp/
+temp/
+
+#Bmad-method
+_bmad/
+.cursor/
