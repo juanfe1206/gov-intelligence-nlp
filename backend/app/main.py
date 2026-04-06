@@ -1,10 +1,7 @@
-import os
-
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-load_dotenv()
+from app.config import settings
 
 app = FastAPI(
     title="gov-intelligence-nlp API",
@@ -12,12 +9,10 @@ app = FastAPI(
     version="0.1.0"
 )
 
-cors_allow_origins_raw = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3000")
-cors_allow_origins = [o.strip() for o in cors_allow_origins_raw.split(",") if o.strip()]
-
+# CORS middleware - origins validated by config
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cors_allow_origins,
+    allow_origins=settings.get_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -39,6 +34,4 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    host = os.getenv("BACKEND_HOST", "127.0.0.1")
-    port = int(os.getenv("BACKEND_PORT", "8000"))
-    uvicorn.run(app, host=host, port=port)
+    uvicorn.run(app, host=settings.BACKEND_HOST, port=settings.BACKEND_PORT)

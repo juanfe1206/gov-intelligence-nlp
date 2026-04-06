@@ -26,7 +26,7 @@ python -m venv .venv
 # macOS/Linux:
 # source .venv/bin/activate
 pip install -r requirements.txt
-uvicorn main:app --reload
+uvicorn app.main:app --reload
 ```
 Backend API at http://localhost:8000
 API docs at http://localhost:8000/docs

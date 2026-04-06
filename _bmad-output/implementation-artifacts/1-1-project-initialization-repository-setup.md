@@ -476,7 +476,7 @@ From `ux-design-specification.md`:
 
 ## Story Completion Status
 
-**Status:** review
+**Status:** done
 **Last Updated:** 2026-04-06  
 
 ### Definition of Done
@@ -506,7 +506,11 @@ From `ux-design-specification.md`:
 - `backend/app/__init__.py` - Backend package init
 - `backend/app/api/__init__.py` - API routes package init
 - `backend/app/main.py` - FastAPI application with health endpoint
+- `backend/app/config.py` - Pydantic-based config with env var validation (added post-review)
 - `backend/requirements.txt` - Python dependencies
+- `backend/requirements-dev.txt` - Dev dependencies separated (added post-review)
+- `backend/tests/conftest.py` - Pytest fixtures (added post-review)
+- `backend/.gitignore` - Backend-specific ignores (added post-review)
 - `.gitignore` - Updated for monorepo structure
 - `.env.example` - Updated with all environment variables
 - `README.md` - Project overview and setup instructions
@@ -516,6 +520,15 @@ Story 1.1 completed successfully. Both dev servers verified running:
 - Frontend: http://localhost:3000 (Next.js default page)
 - Backend: http://localhost:8000 (FastAPI with /health endpoint returning {"status": "ok"})
 - API docs available at http://localhost:8000/docs
+
+**Code Review Findings Addressed:**
+- HIGH: Added Pydantic Settings for env var validation with fail-fast behavior
+- HIGH: Added CORS validation to reject '*' when credentials enabled
+- HIGH: Added conftest.py for proper test configuration
+- MEDIUM: Fixed backend entry point consistency (README updated to `uvicorn app.main:app`)
+- LOW: Updated frontend metadata to project-specific title/description
+- LOW: Added backend/.gitignore for comprehensive coverage
+- LOW: Separated dev dependencies into requirements-dev.txt
 
 Ready to proceed to Story 1.2: Database Schema & Migration Setup.
 
