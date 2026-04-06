@@ -13,6 +13,10 @@ jobs:
   backend:
     name: backend (python)
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: sqlite:///./ci.db
+      OPENAI_API_KEY: ci-placeholder-key
+      APP_ENV: ci
     defaults:
       run:
         working-directory: backend
