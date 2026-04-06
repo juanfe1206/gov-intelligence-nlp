@@ -1,50 +1,56 @@
-### OS / Editor ###
+# Environment
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Node / React frontend
+frontend/node_modules/
+frontend/.next/
+frontend/out/
+frontend/*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+backend/.venv/
+backend/venv/
+backend/ENV/
+
+# IDE
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
 Thumbs.db
 desktop.ini
 
-.vscode/
-.idea/
-*.code-workspace
-
-### Python ###
-__pycache__/
-*.py[cod]
-*$py.class
-
-.env
-.env.*
-!.env.example
-venv/
-env/
-.venv/
-.envrc
-
+# Logs
 *.log
 
-### Jupyter / experiments ###
-.ipynb_checkpoints/
-*.ipynb
-
-### Node / React frontend ###
-node_modules/
-*.tsbuildinfo
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
 
 # Build output
 dist/
 build/
-.next/
-out/
 
-### Dependencies ###
+# Dependencies
 poetry.lock
 Pipfile.lock
 poetry.toml
-package-lock.json
-pnpm-lock.yaml
-yarn.lock
 
-### Databases / data dumps ###
+# Databases / data dumps
 *.db
 *.sqlite3
 *.sqlite
@@ -60,19 +66,23 @@ yarn.lock
 data/
 datasets/
 
-### Models / embeddings / checkpoints ###
+# Models / embeddings / checkpoints
 models/
 checkpoints/
 artifacts/
 wandb/
 mlruns/
 
-### Cache / temp ###
+# Cache / temp
 .cache/
 tmp/
 temp/
 
-#Bmad-method
+# Jupyter / experiments
+.ipynb_checkpoints/
+*.ipynb
+
+# BMad-method
 _bmad/
 .cursor/
 .claude/
