@@ -1,0 +1,83 @@
+# generated: 2026-04-06
+# last_updated: 2026-04-06
+# project: gov-intelligence-nlp
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-04-06
+last_updated: 2026-04-06
+project: gov-intelligence-nlp
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: Data Ingestion & Processing Pipeline
+  epic-1: backlog
+  1-1-project-initialization-repository-setup: backlog
+  1-2-database-schema-migration-setup: backlog
+  1-3-political-taxonomy-configuration: backlog
+  1-4-csv-data-ingestion: backlog
+  1-5-nlp-classification-pipeline: backlog
+  1-6-ingestion-job-status-tracking-api: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: Analytics Dashboard & Data Exploration
+  epic-2: backlog
+  2-1-frontend-shell-layout-design-system-setup: backlog
+  2-2-post-volume-sentiment-over-time-charts: backlog
+  2-3-dashboard-filter-controls: backlog
+  2-4-topic-distribution-trending-topics-panel: backlog
+  2-5-representative-posts-panel-evidence-post-cards: backlog
+  2-6-cross-party-sentiment-comparison: backlog
+  2-7-spike-alert-detection-banner: backlog
+  2-8-analyst-deep-dive-export-copy: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: LLM-Powered Q&A Intelligence Interface
+  epic-3: backlog
+  3-1-qa-retrieval-aggregation-backend: backlog
+  3-2-llm-answer-generation: backlog
+  3-3-qa-frontend-question-input-insight-summary-panel: backlog
+  3-4-qa-filter-controls-multi-session-iteration: backlog
+  3-5-narrative-clusters-rapid-response-investigation: backlog
+  3-6-qa-resilience-error-states-demo-readiness: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Admin, Operations & Demo Readiness
+  epic-4: backlog
+  4-1-admin-operations-dashboard-ui: backlog
+  4-2-system-health-check-endpoints-status-indicators: backlog
+  4-3-demo-environment-configuration-unauthenticated-access: backlog
+  4-4-demo-reset-clean-pipeline-reinitialization: backlog
+  epic-4-retrospective: optional
