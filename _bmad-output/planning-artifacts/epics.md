@@ -162,6 +162,9 @@ UX-DR16: Implement a reusable shell layout (left nav + top header + flexible mai
 | FR32 | Epic 4 | Unauthenticated classroom access |
 | FR33 | Epic 3 | Ad-hoc Q&A from instructors during demo |
 | FR34 | Epic 4 | Demo reset and clean pipeline reinitialization |
+| Growth-G1 | Epic 5 | Offline-first source connectors framework in codebase |
+| Growth-G2 | Epic 5 | One platform connector with checkpointing and replay mode |
+| Growth-G3 | Epic 5 | Connector observability, retries, and compliance guardrails |
 
 ## Epic List
 
@@ -183,6 +186,11 @@ Campaign managers, comms, and analysts can type natural-language political quest
 ### Epic 4: Admin, Operations & Demo Readiness
 Admin and technical owners can monitor ingestion health, view job status and error summaries, run health checks, recover from failures, and reset the system for a clean demo run; all classroom participants can access the platform without individual authentication.
 **FRs covered:** FR23, FR24, FR25, FR26, FR32, FR34
+
+### Epic 5: Source Connectors (Offline-First Scraping Framework)
+Technical owners can run source-collection code from this repository (without requiring always-live scraping), normalize payloads into a stable ingestion contract, replay captured payloads for deterministic runs, and monitor connector health and failures without destabilizing core analytics and Q&A delivery.
+**FRs covered:** Extends FR1, FR2, FR23, FR24, FR26 and post-MVP multi-platform ingestion goals (Growth Features)
+**Scope guardrail:** Start with one connector end-to-end and require replay mode parity before any additional platform connector work.
 
 ---
 
@@ -771,3 +779,105 @@ So that each demo starts from a known, consistent state with fresh data.
 **Given** the full pipeline is run from a clean state on a typical student machine
 **When** the operator times the run
 **Then** ingestion + processing of the demo dataset (≤10k posts) completes within a reasonable preparation window (NFR5), producing stable, inspectable outputs in the database
+
+---
+
+## Epic 5: Source Connectors (Offline-First Scraping Framework)
+
+Technical owners can run source-collection code from this repository (without requiring always-live scraping), normalize payloads into a stable ingestion contract, replay captured payloads for deterministic runs, and monitor connector health and failures.
+
+### Story 5.1: Connector Interface & Normalization Contract
+
+As a developer,
+I want a provider-agnostic connector interface and shared normalized post schema,
+So that collection from different platforms can plug into the same ingestion flow without custom downstream logic per source.
+
+**Acceptance Criteria:**
+
+**Given** the backend codebase
+**When** a developer adds a new connector
+**Then** it implements a shared interface (for example `fetch`, `normalize`, `checkpoint`) and returns normalized records with required fields (`source`, `platform`, `external_id`, `text`, `author`, `created_at`, `raw_payload`)
+**And** normalized records can be ingested by the existing raw ingestion pipeline without special-case per-platform code
+
+**Given** malformed or incomplete source payloads
+**When** normalization runs
+**Then** invalid records are rejected with structured validation errors and valid records continue processing
+**And** rejection counts are surfaced in the connector run summary
+
+---
+
+### Story 5.2: First Platform Connector (Offline-First + Checkpointing)
+
+As an admin or technical owner,
+I want one real platform connector implemented in this repo with incremental checkpointing,
+So that I can collect new posts between runs without re-downloading the entire dataset.
+
+**Acceptance Criteria:**
+
+**Given** connector configuration is provided (credentials, query params, limits)
+**When** the admin triggers `POST /connectors/{connector_id}/run`
+**Then** the connector fetches records from the selected source and persists normalized results into the raw ingestion path
+**And** a checkpoint (for example last timestamp or cursor) is stored and used on subsequent runs
+
+**Given** a previous successful run exists
+**When** the connector is run again
+**Then** only records newer than the checkpoint are requested
+**And** duplicate records (by `platform + external_id` or configured dedupe key) are skipped
+
+---
+
+### Story 5.3: Replay Mode for Deterministic Demo Runs
+
+As a demo operator,
+I want to replay previously captured raw source payloads through the same connector-normalization code path,
+So that demos and tests are reproducible even when live collection is unavailable or unstable.
+
+**Acceptance Criteria:**
+
+**Given** one or more captured source payload files exist locally
+**When** the operator triggers replay mode (endpoint or CLI command)
+**Then** the system runs the exact same normalization + ingestion path used by live connector runs
+**And** replay output (rows inserted, rows skipped, validation failures) is reported in the same run summary format as live mode
+
+**Given** a replay payload previously processed successfully
+**When** replay runs again on the same payload
+**Then** deduplication prevents duplicate raw post inserts and reports skipped duplicates
+
+---
+
+### Story 5.4: Connector Run Observability, Retry, and Failure Taxonomy
+
+As an admin or technical owner,
+I want connector runs to expose clear status, retryability, and categorized failures,
+So that I can diagnose and recover from source collection issues quickly.
+
+**Acceptance Criteria:**
+
+**Given** a connector run starts
+**When** the run status is queried
+**Then** job metadata includes connector id, mode (`live` or `replay`), start/end time, fetched count, normalized count, skipped count, and failure summary
+
+**Given** a run fails due to transient issues (rate limit, timeout, temporary upstream errors)
+**When** retries are configured
+**Then** retries execute with bounded backoff and final status reflects whether recovery succeeded
+**And** failure categories are machine-readable (for example `auth_error`, `rate_limit`, `upstream_unavailable`, `validation_error`)
+
+---
+
+### Story 5.5: Compliance and Safety Guardrails for Connectors
+
+As a technical owner,
+I want explicit connector guardrails around legal/policy constraints and secret handling,
+So that collection code can be used responsibly in classroom/demo environments.
+
+**Acceptance Criteria:**
+
+**Given** connector configuration includes credentials or tokens
+**When** the app logs connector execution details
+**Then** secrets are never written to logs, persisted artifacts, or API responses
+**And** `.env.example` documents required connector variables without real secrets
+
+**Given** a connector has platform-specific constraints (terms, rate limit caps, allowed endpoints)
+**When** the connector is enabled
+**Then** a connector metadata file documents permitted collection scope and operational limits
+**And** the run command enforces configured max request/page limits to prevent accidental over-collection

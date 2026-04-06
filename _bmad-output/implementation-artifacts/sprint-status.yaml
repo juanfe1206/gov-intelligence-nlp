@@ -81,3 +81,12 @@ development_status:
   4-3-demo-environment-configuration-unauthenticated-access: backlog
   4-4-demo-reset-clean-pipeline-reinitialization: backlog
   epic-4-retrospective: optional
+
+  # Epic 5: Source Connectors (Offline-First Scraping Framework)
+  epic-5: backlog
+  5-1-connector-interface-normalization-contract: backlog
+  5-2-first-platform-connector-offline-first-checkpointing: backlog
+  5-3-replay-mode-deterministic-demo-runs: backlog
+  5-4-connector-run-observability-retry-failure-taxonomy: backlog
+  5-5-compliance-safety-guardrails-connectors: backlog
+  epic-5-retrospective: optional
