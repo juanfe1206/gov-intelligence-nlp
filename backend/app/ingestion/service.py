@@ -3,6 +3,7 @@
 import csv
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -40,10 +41,15 @@ async def ingest_csv(
     source_name = source_name or settings.INGESTION_SOURCE_NAME
 
     started_at = datetime.now(timezone.utc)
+
+    # Create running job at start
+    job_id = await _create_running_job(source_name, "ingest")
+
     summary = IngestionSummary(
         status="failed",
         source=source_name,
         started_at=started_at,
+        job_id=job_id,
     )
 
     try:
@@ -53,7 +59,7 @@ async def ingest_csv(
             logger.error(error_msg)
             summary.errors.append(error_msg)
             summary.finished_at = datetime.now(timezone.utc)
-            await _persist_job(summary)
+            await _persist_job(summary, job_id=job_id)
             return summary
 
         rows = await _read_csv_rows(file_path, summary)
@@ -69,7 +75,7 @@ async def ingest_csv(
         summary.finished_at = datetime.now(timezone.utc)
         await session.rollback()
 
-    await _persist_job(summary)
+    await _persist_job(summary, job_id=job_id)
     return summary
 
 
@@ -176,52 +182,106 @@ async def _insert_rows(
     await session.commit()
 
 
-async def _persist_job(summary: IngestionSummary) -> None:
-    """Persist ingestion job record to database."""
+async def _create_running_job(source: str, job_type: str) -> str:
+    """Create a job record with status 'running' at the start of processing.
+
+    Args:
+        source: Data source identifier
+        job_type: Type of job ("ingest" or "process")
+
+    Returns:
+        UUID string of the created job
+    """
     from app.db.session import async_session_maker
 
     async with async_session_maker() as session:
         job = IngestionJob(
-            source=summary.source,
-            status=summary.status,
-            started_at=summary.started_at,
-            finished_at=summary.finished_at,
-            row_count=summary.processed,
-            inserted_count=summary.inserted,
-            skipped_count=summary.skipped,
-            duplicate_count=summary.duplicates,
-            error_summary=summary.errors if summary.errors else None,
+            source=source,
+            job_type=job_type,
+            status="running",
+            started_at=datetime.now(timezone.utc),
         )
         session.add(job)
-        try:
-            await session.commit()
-        except ProgrammingError as exc:
-            await session.rollback()
-            # Backward compatibility for DBs that haven't applied the job_type migration yet.
-            if "job_type" not in str(exc).lower():
-                raise
+        await session.commit()
+        return str(job.id)
+
+
+async def _persist_job(summary: IngestionSummary, job_id: str | None = None) -> str:
+    """Persist ingestion job record to database.
+
+    Args:
+        summary: Ingestion summary with results
+        job_id: Optional job ID to update (for running jobs). If not provided, creates new record.
+
+    Returns:
+        UUID string of the job
+    """
+    from app.db.session import async_session_maker
+    from sqlalchemy import update
+
+    async with async_session_maker() as session:
+        if job_id:
+            # Update existing running job
+            job_id_uuid = uuid.UUID(job_id)
             await session.execute(
-                text(
-                    """
-                    INSERT INTO ingestion_jobs
-                    (source, status, started_at, finished_at, row_count, inserted_count, skipped_count, duplicate_count, error_summary)
-                    VALUES
-                    (:source, :status, :started_at, :finished_at, :row_count, :inserted_count, :skipped_count, :duplicate_count, :error_summary)
-                    """
-                ),
-                {
-                    "source": summary.source,
-                    "status": summary.status,
-                    "started_at": summary.started_at,
-                    "finished_at": summary.finished_at,
-                    "row_count": summary.processed,
-                    "inserted_count": summary.inserted,
-                    "skipped_count": summary.skipped,
-                    "duplicate_count": summary.duplicates,
-                    "error_summary": json.dumps(summary.errors) if summary.errors else None,
-                },
+                update(IngestionJob)
+                .where(IngestionJob.id == job_id_uuid)
+                .values(
+                    status=summary.status,
+                    finished_at=summary.finished_at,
+                    row_count=summary.processed,
+                    inserted_count=summary.inserted,
+                    skipped_count=summary.skipped,
+                    duplicate_count=summary.duplicates,
+                    error_summary=summary.errors if summary.errors else None,
+                )
             )
             await session.commit()
+            return job_id
+        else:
+            # Create new job record (backward compatibility)
+            job = IngestionJob(
+                source=summary.source,
+                status=summary.status,
+                started_at=summary.started_at,
+                finished_at=summary.finished_at,
+                row_count=summary.processed,
+                inserted_count=summary.inserted,
+                skipped_count=summary.skipped,
+                duplicate_count=summary.duplicates,
+                error_summary=summary.errors if summary.errors else None,
+            )
+            session.add(job)
+            try:
+                await session.commit()
+            except ProgrammingError as exc:
+                await session.rollback()
+                # Backward compatibility for DBs that haven't applied the job_type migration yet.
+                if "job_type" not in str(exc).lower():
+                    raise
+                await session.execute(
+                    text(
+                        """
+                        INSERT INTO ingestion_jobs
+                        (source, status, started_at, finished_at, row_count, inserted_count, skipped_count, duplicate_count, error_summary)
+                        VALUES
+                        (:source, :status, :started_at, :finished_at, :row_count, :inserted_count, :skipped_count, :duplicate_count, :error_summary)
+                        """
+                    ),
+                    {
+                        "source": summary.source,
+                        "status": summary.status,
+                        "started_at": summary.started_at,
+                        "finished_at": summary.finished_at,
+                        "row_count": summary.processed,
+                        "inserted_count": summary.inserted,
+                        "skipped_count": summary.skipped,
+                        "duplicate_count": summary.duplicates,
+                        "error_summary": json.dumps(summary.errors) if summary.errors else None,
+                    },
+                )
+                await session.commit()
+            return str(job.id)
 
 
 def _parse_timestamp(value: str) -> datetime:

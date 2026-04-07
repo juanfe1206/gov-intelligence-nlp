@@ -66,6 +66,8 @@ async def ensure_test_schema_current():
     from app import models  # noqa: F401 - ensure model metadata is registered
 
     async with engine.begin() as conn:
+        # Enable pgvector extension before creating tables
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 

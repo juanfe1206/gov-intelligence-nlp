@@ -36,6 +36,7 @@ class IngestionSummary(BaseModel):
     errors: list[str] = Field(default_factory=list, description="Error messages for skipped rows")
     started_at: datetime = Field(..., description="Ingestion start time")
     finished_at: datetime | None = Field(None, description="Ingestion finish time")
+    job_id: str | None = Field(None, description="Job ID for tracking the ingestion run")
 
     @property
     def duration_seconds(self) -> float | None:

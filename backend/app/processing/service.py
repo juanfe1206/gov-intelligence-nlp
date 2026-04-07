@@ -2,6 +2,7 @@
 
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -103,9 +104,13 @@ async def process_posts(
     batch_size = batch_size or settings.PROCESSING_BATCH_SIZE
     started_at = datetime.now(timezone.utc)
 
+    # Create running job at start
+    job_id = await _create_running_job("nlp_processing", "process")
+
     summary = ProcessingSummary(
         status="failed",
         started_at=started_at,
+        job_id=job_id,
     )
 
     try:
@@ -120,7 +125,7 @@ async def process_posts(
             logger.info("No unprocessed posts found")
             summary.status = "completed"
             summary.finished_at = datetime.now(timezone.utc)
-            summary.job_id = await _persist_job(summary)
+            await _persist_job(summary, job_id=job_id)
             return summary
 
         succeeded = 0
@@ -195,7 +200,7 @@ async def process_posts(
         summary.finished_at = datetime.now(timezone.utc)
         await session.rollback()
 
-    summary.job_id = await _persist_job(summary)
+    await _persist_job(summary, job_id=job_id)
     return summary
 
 
@@ -271,9 +276,42 @@ async def _insert_failed_post(
     await session.execute(stmt)
 
 
-async def _persist_job(summary: ProcessingSummary) -> str:
-    """Persist processing job record to database."""
+async def _create_running_job(source: str, job_type: str) -> str:
+    """Create a job record with status 'running' at the start of processing.
+
+    Args:
+        source: Data source identifier
+        job_type: Type of job ("ingest" or "process")
+
+    Returns:
+        UUID string of the created job
+    """
     from app.db.session import async_session_maker
+
+    async with async_session_maker() as session:
+        job = IngestionJob(
+            source=source,
+            job_type=job_type,
+            status="running",
+            started_at=datetime.now(timezone.utc),
+        )
+        session.add(job)
+        await session.commit()
+        return str(job.id)
+
+
+async def _persist_job(summary: ProcessingSummary, job_id: str | None = None) -> str:
+    """Persist processing job record to database.
+
+    Args:
+        summary: Processing summary with results
+        job_id: Optional job ID to update (for running jobs). If not provided, creates new record.
+
+    Returns:
+        UUID string of the job
+    """
+    from app.db.session import async_session_maker
+    from sqlalchemy import update
 
     error_summary = None
     if summary.errors:
@@ -281,48 +319,68 @@ async def _persist_job(summary: ProcessingSummary) -> str:
         error_summary = summary.errors[:50]
 
     async with async_session_maker() as session:
-        job = IngestionJob(
-            source="nlp_processing",
-            job_type="process",
-            status=summary.status,
-            started_at=summary.started_at,
-            finished_at=summary.finished_at,
-            row_count=summary.processed,
-            inserted_count=summary.succeeded,
-            skipped_count=summary.skipped,
-            duplicate_count=summary.failed,  # Use duplicate for failed count
-            error_summary=error_summary,
-        )
-        session.add(job)
-        try:
-            await session.flush()
-            await session.commit()
-            return str(job.id)
-        except ProgrammingError as exc:
-            await session.rollback()
-            if "job_type" not in str(exc).lower():
-                raise
-            result = await session.execute(
-                text(
-                    """
-                    INSERT INTO ingestion_jobs
-                    (source, status, started_at, finished_at, row_count, inserted_count, skipped_count, duplicate_count, error_summary)
-                    VALUES
-                    (:source, :status, :started_at, :finished_at, :row_count, :inserted_count, :skipped_count, :duplicate_count, :error_summary)
-                    RETURNING id
-                    """
-                ),
-                {
-                    "source": "nlp_processing",
-                    "status": summary.status,
-                    "started_at": summary.started_at,
-                    "finished_at": summary.finished_at,
-                    "row_count": summary.processed,
-                    "inserted_count": summary.succeeded,
-                    "skipped_count": summary.skipped,
-                    "duplicate_count": summary.failed,
-                    "error_summary": json.dumps(error_summary) if error_summary else None,
-                },
+        if job_id:
+            # Update existing running job
+            job_id_uuid = uuid.UUID(job_id)
+            await session.execute(
+                update(IngestionJob)
+                .where(IngestionJob.id == job_id_uuid)
+                .values(
+                    status=summary.status,
+                    finished_at=summary.finished_at,
+                    row_count=summary.processed,
+                    inserted_count=summary.succeeded,
+                    skipped_count=summary.skipped,
+                    duplicate_count=summary.failed,
+                    error_summary=error_summary,
+                )
             )
             await session.commit()
-            return str(result.scalar_one())
+            return job_id
+        else:
+            # Create new job record (backward compatibility)
+            job = IngestionJob(
+                source="nlp_processing",
+                job_type="process",
+                status=summary.status,
+                started_at=summary.started_at,
+                finished_at=summary.finished_at,
+                row_count=summary.processed,
+                inserted_count=summary.succeeded,
+                skipped_count=summary.skipped,
+                duplicate_count=summary.failed,
+                error_summary=error_summary,
+            )
+            session.add(job)
+            try:
+                await session.flush()
+                await session.commit()
+                return str(job.id)
+            except ProgrammingError as exc:
+                await session.rollback()
+                if "job_type" not in str(exc).lower():
+                    raise
+                result = await session.execute(
+                    text(
+                        """
+                        INSERT INTO ingestion_jobs
+                        (source, status, started_at, finished_at, row_count, inserted_count, skipped_count, duplicate_count, error_summary)
+                        VALUES
+                        (:source, :status, :started_at, :finished_at, :row_count, :inserted_count, :skipped_count, :duplicate_count, :error_summary)
+                        RETURNING id
+                        """
+                    ),
+                    {
+                        "source": "nlp_processing",
+                        "status": summary.status,
+                        "started_at": summary.started_at,
+                        "finished_at": summary.finished_at,
+                        "row_count": summary.processed,
+                        "inserted_count": summary.succeeded,
+                        "skipped_count": summary.skipped,
+                        "duplicate_count": summary.failed,
+                        "error_summary": json.dumps(error_summary) if error_summary else None,
+                    },
+                )
+                await session.commit()
+                return str(result.scalar_one())
