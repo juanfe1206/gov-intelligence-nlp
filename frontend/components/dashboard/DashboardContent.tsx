@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import VolumeChart from '@/components/charts/VolumeChart'
 import SentimentChart from '@/components/charts/SentimentChart'
 import FilterBar, { FilterState, getDefaultDates } from './FilterBar'
+import TopicsPanel from './TopicsPanel'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -75,6 +76,13 @@ export default function DashboardContent() {
     }
   }, [filters])
 
+  function handleTopicSelect(topicName: string) {
+    setFilters((prev) => ({ ...prev, topic: topicName, subtopic: '' }))
+  }
+  function handleClearTopic() {
+    setFilters((prev) => ({ ...prev, topic: '', subtopic: '' }))
+  }
+
   if (loading) {
     return (
       <div className="col-span-12">
@@ -98,6 +106,11 @@ export default function DashboardContent() {
     return (
       <>
         <FilterBar filters={filters} onChange={setFilters} />
+        <TopicsPanel
+          filters={filters}
+          onTopicSelect={handleTopicSelect}
+          onClearTopic={handleClearTopic}
+        />
         <div className="col-span-12">
           <p className="text-muted [font-size:var(--font-size-body)]">
             {hasFilters
@@ -135,6 +148,12 @@ export default function DashboardContent() {
         </h3>
         <SentimentChart data={sentimentData?.data ?? []} />
       </div>
+
+      <TopicsPanel
+        filters={filters}
+        onTopicSelect={handleTopicSelect}
+        onClearTopic={handleClearTopic}
+      />
     </>
   )
 }

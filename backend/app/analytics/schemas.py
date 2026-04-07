@@ -37,3 +37,32 @@ class PlatformsResponse(BaseModel):
     """Response for available platforms endpoint."""
 
     platforms: list[str]
+
+
+class SubtopicDistributionItem(BaseModel):
+    """Subtopic-level breakdown within a topic."""
+
+    name: str
+    label: str
+    count: int
+    positive: int
+    neutral: int
+    negative: int
+
+
+class TopicDistributionItem(BaseModel):
+    """Topic distribution with sentiment breakdown and top subtopics."""
+
+    name: str
+    label: str
+    count: int
+    positive: int
+    neutral: int
+    negative: int
+    subtopics: list[SubtopicDistributionItem]
+
+
+class TopicsResponse(BaseModel):
+    """Response for topics distribution endpoint."""
+
+    topics: list[TopicDistributionItem]
