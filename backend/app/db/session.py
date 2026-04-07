@@ -10,7 +10,10 @@ engine_kwargs: dict = {
     "echo": True,  # Log SQL queries (disable in production)
     "future": True,
 }
-if settings.APP_ENV == "test":
+# In tests/CI, pytest may use different event loops across test cases.
+# Reusing pooled asyncpg connections across loops causes
+# "Future attached to a different loop" and "another operation is in progress".
+if settings.APP_ENV in {"test", "ci"}:
     engine_kwargs["poolclass"] = NullPool
     engine_kwargs["connect_args"] = {
         # Fail fast in tests instead of appearing stuck on DB/network waits.
