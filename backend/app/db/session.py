@@ -13,8 +13,15 @@ engine_kwargs: dict = {
 if settings.APP_ENV == "test":
     engine_kwargs["poolclass"] = NullPool
     engine_kwargs["connect_args"] = {
+        # Fail fast in tests instead of appearing stuck on DB/network waits.
+        "timeout": 10,
+        "command_timeout": 30,
         "statement_cache_size": 0,
         "prepared_statement_cache_size": 0,
+        "server_settings": {
+            "statement_timeout": "30000",
+            "lock_timeout": "5000",
+        },
     }
 
 # Create async engine for database connections

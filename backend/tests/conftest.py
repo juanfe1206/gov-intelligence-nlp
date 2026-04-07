@@ -172,6 +172,8 @@ async def isolate_test_tables(async_engine):
     """
     # Truncate before test
     async with async_engine.begin() as conn:
+        await conn.execute(text("SET LOCAL statement_timeout = '30s'"))
+        await conn.execute(text("SET LOCAL lock_timeout = '5s'"))
         await conn.execute(
             text(
                 "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
@@ -182,6 +184,8 @@ async def isolate_test_tables(async_engine):
 
     # Truncate after test
     async with async_engine.begin() as conn:
+        await conn.execute(text("SET LOCAL statement_timeout = '30s'"))
+        await conn.execute(text("SET LOCAL lock_timeout = '5s'"))
         await conn.execute(
             text(
                 "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
