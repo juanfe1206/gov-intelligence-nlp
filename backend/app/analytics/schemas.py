@@ -66,3 +66,26 @@ class TopicsResponse(BaseModel):
     """Response for topics distribution endpoint."""
 
     topics: list[TopicDistributionItem]
+
+
+class PostItem(BaseModel):
+    """A single representative post with metadata for display as an Evidence Post Card."""
+
+    id: str
+    original_text: str
+    platform: str
+    created_at: str  # ISO date string "YYYY-MM-DD"
+    sentiment: str  # "positive", "neutral", or "negative"
+    topic: str
+    topic_label: str
+    subtopic: str | None
+    subtopic_label: str | None
+    author: str | None
+    source: str | None
+
+
+class PostsResponse(BaseModel):
+    """Response for representative posts endpoint."""
+
+    posts: list[PostItem]
+    total: int

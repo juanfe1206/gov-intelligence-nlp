@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.session import get_db
-from app.analytics.schemas import VolumeResponse, SentimentResponse, PlatformsResponse, TopicsResponse
+from app.analytics.schemas import VolumeResponse, SentimentResponse, PlatformsResponse, TopicsResponse, PostsResponse
 from app.analytics import service as analytics_service
 from app.models.raw_post import RawPost
 
@@ -103,3 +103,21 @@ async def get_topics(
         raise HTTPException(status_code=422, detail="start_date must be less than or equal to end_date")
     taxonomy = request.app.state.taxonomy
     return await analytics_service.get_topics(session, taxonomy, start_date, end_date, topic, subtopic, target, platform)
+
+
+@router.get("/posts", response_model=PostsResponse)
+async def get_posts(
+    request: Request,
+    start_date: date = Query(default_factory=_default_start),
+    end_date: date = Query(default_factory=_default_end),
+    topic: str | None = Query(default=None, description="Filter by topic name (e.g. 'vivienda')"),
+    subtopic: str | None = Query(default=None, description="Filter by subtopic name"),
+    target: str | None = Query(default=None, description="Filter by political target"),
+    platform: str | None = Query(default=None, description="Filter by platform"),
+    session: AsyncSession = Depends(get_db),
+) -> PostsResponse:
+    """Get representative posts ranked by intensity and recency."""
+    if start_date > end_date:
+        raise HTTPException(status_code=422, detail="start_date must be less than or equal to end_date")
+    taxonomy = request.app.state.taxonomy
+    return await analytics_service.get_posts(session, taxonomy, start_date, end_date, topic, subtopic, target, platform)

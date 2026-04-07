@@ -5,6 +5,7 @@ import VolumeChart from '@/components/charts/VolumeChart'
 import SentimentChart from '@/components/charts/SentimentChart'
 import FilterBar, { FilterState, getDefaultDates } from './FilterBar'
 import TopicsPanel from './TopicsPanel'
+import PostsPanel from './PostsPanel'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -111,6 +112,7 @@ export default function DashboardContent() {
           onTopicSelect={handleTopicSelect}
           onClearTopic={handleClearTopic}
         />
+        <PostsPanel filters={filters} />
         <div className="col-span-12">
           <p className="text-muted [font-size:var(--font-size-body)]">
             {hasFilters
@@ -154,6 +156,7 @@ export default function DashboardContent() {
         onTopicSelect={handleTopicSelect}
         onClearTopic={handleClearTopic}
       />
+      <PostsPanel filters={filters} />
     </>
   )
 }

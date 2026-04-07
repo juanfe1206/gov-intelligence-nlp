@@ -16,6 +16,8 @@ from app.analytics.schemas import (
     SubtopicDistributionItem,
     TopicDistributionItem,
     TopicsResponse,
+    PostItem,
+    PostsResponse,
 )
 from app.taxonomy.schemas import TaxonomyConfig
 
@@ -272,3 +274,101 @@ async def get_topics(
         )
 
     return TopicsResponse(topics=result_topics)
+
+
+async def get_posts(
+    session: AsyncSession,
+    taxonomy: TaxonomyConfig,
+    start_date: date,
+    end_date: date,
+    topic: str | None = None,
+    subtopic: str | None = None,
+    target: str | None = None,
+    platform: str | None = None,
+    limit: int = 10,
+) -> PostsResponse:
+    """Get representative posts for the given filters.
+
+    Posts are ranked by intensity DESC (most intense/representative first),
+    then by created_at DESC (most recent). Applies same filter pattern as get_volume.
+    Returns up to `limit` posts plus the total count matching filters.
+    """
+    date_col = cast(RawPost.created_at, Date)
+    base_filters = [
+        date_col >= start_date,
+        date_col <= end_date,
+        or_(
+            ProcessedPost.error_status.is_(False),
+            ProcessedPost.error_status.is_(None),
+        ),
+    ]
+    if topic is not None:
+        base_filters.append(ProcessedPost.topic == topic)
+    if subtopic is not None:
+        base_filters.append(ProcessedPost.subtopic == subtopic)
+    if target is not None:
+        base_filters.append(ProcessedPost.target == target)
+    if platform is not None:
+        base_filters.append(RawPost.platform == platform)
+
+    # Count query (no LIMIT)
+    count_stmt = (
+        select(func.count())
+        .select_from(ProcessedPost)
+        .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+        .where(and_(*base_filters))
+    )
+    total_result = await session.execute(count_stmt)
+    total = total_result.scalar() or 0
+
+    # Posts query — ranked by intensity DESC NULLS LAST, then created_at DESC
+    posts_stmt = (
+        select(
+            ProcessedPost.id,
+            RawPost.original_text,
+            RawPost.platform,
+            RawPost.created_at,
+            RawPost.author,
+            RawPost.source,
+            ProcessedPost.sentiment,
+            ProcessedPost.topic,
+            ProcessedPost.subtopic,
+            ProcessedPost.intensity,
+        )
+        .select_from(ProcessedPost)
+        .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+        .where(and_(*base_filters))
+        .order_by(ProcessedPost.intensity.desc().nulls_last(), RawPost.created_at.desc())
+        .limit(limit)
+    )
+    result = await session.execute(posts_stmt)
+
+    # Build label lookup from taxonomy (per-topic subtopic maps — same as get_topics)
+    topic_label_map: dict[str, str] = {t.name: t.label for t in taxonomy.topics}
+    topic_subtopic_labels: dict[str, dict[str, str]] = {
+        t.name: {st.name: st.label for st in t.subtopics} for t in taxonomy.topics
+    }
+
+    posts: list[PostItem] = []
+    for row in result.all():
+        topic_name = row.topic or "unknown"
+        subtopic_name = row.subtopic
+        st_labels = topic_subtopic_labels.get(topic_name, {})
+        created_date = row.created_at.date() if hasattr(row.created_at, "date") else row.created_at
+        posts.append(
+            PostItem(
+                id=str(row.id),
+                original_text=row.original_text,
+                platform=row.platform or "",
+                created_at=str(created_date),
+                sentiment=(row.sentiment or "neutral").lower(),
+                topic=topic_name,
+                topic_label=topic_label_map.get(topic_name, topic_name),
+                subtopic=subtopic_name,
+                subtopic_label=st_labels.get(subtopic_name, subtopic_name) if subtopic_name else None,
+                author=row.author,
+                source=row.source,
+            )
+        )
+
+    return PostsResponse(posts=posts, total=total)
