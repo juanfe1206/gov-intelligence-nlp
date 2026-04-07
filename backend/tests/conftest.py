@@ -35,6 +35,7 @@ import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.main import app
 from app.taxonomy.loader import load_taxonomy
@@ -58,51 +59,124 @@ def sample_taxonomy() -> TaxonomyConfig:
     return load_taxonomy(Path(__file__).parent.parent / "config/taxonomy.yaml")
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
-async def ensure_test_schema_current():
-    """Recreate test tables from current ORM models once per test session."""
-    from app.db.base import Base
-    from app.db.session import engine
-    from app import models  # noqa: F401 - ensure model metadata is registered
+# Use raw SQL for schema setup to avoid SQLAlchemy drop_all hanging issues
+def _setup_database_schema():
+    """Set up the test database schema using raw SQL and sync connection."""
+    import psycopg2
 
-    async with engine.begin() as conn:
-        # Enable pgvector extension before creating tables
-        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
+    sync_url = os.environ.get(
+        "DATABASE_SYNC_URL",
+        "postgresql://postgres:postgres@localhost:5432/gov_intelligence_nlp_test",
+    )
+
+    conn = psycopg2.connect(sync_url)
+    conn.autocommit = True
+    cur = conn.cursor()
+
+    # Drop tables in reverse dependency order
+    cur.execute("DROP TABLE IF EXISTS processed_posts CASCADE")
+    cur.execute("DROP TABLE IF EXISTS raw_posts CASCADE")
+    cur.execute("DROP TABLE IF EXISTS ingestion_jobs CASCADE")
+
+    # Create tables with TEXT type instead of VECTOR for testing
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ingestion_jobs (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            source VARCHAR(255) NOT NULL,
+            job_type VARCHAR(50),
+            status VARCHAR(50) NOT NULL,
+            started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            finished_at TIMESTAMP WITH TIME ZONE,
+            row_count INTEGER,
+            inserted_count INTEGER,
+            skipped_count INTEGER,
+            duplicate_count INTEGER,
+            error_summary JSONB
+        )
+    """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS raw_posts (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            source VARCHAR(255) NOT NULL,
+            platform VARCHAR(100) NOT NULL,
+            original_text TEXT NOT NULL,
+            content_hash VARCHAR(64),
+            author VARCHAR(255),
+            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            metadata JSONB,
+            ingested_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            UNIQUE(source, content_hash)
+        )
+    """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS processed_posts (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            raw_post_id UUID NOT NULL REFERENCES raw_posts(id),
+            topic VARCHAR(100) NOT NULL,
+            subtopic VARCHAR(100),
+            sentiment VARCHAR(20) NOT NULL,
+            target VARCHAR(255),
+            intensity FLOAT,
+            embedding TEXT,
+            processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+            model_version VARCHAR(50),
+            error_status BOOLEAN DEFAULT FALSE,
+            error_message TEXT,
+            UNIQUE(raw_post_id)
+        )
+    """
+    )
+
+    cur.close()
+    conn.close()
+
+
+@pytest.fixture(scope="session", autouse=True)
+def test_database_setup():
+    """Set up test database schema once per test session."""
+    _setup_database_schema()
+    yield
 
 
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def async_engine():
-    """Provide the async engine for test fixtures.
-
-    Yields the engine and ensures proper cleanup after the test session.
-    """
+    """Provide the async engine for test fixtures."""
     from app.db.session import engine
+
     yield engine
     await engine.dispose()
 
 
 @pytest_asyncio.fixture(autouse=True, loop_scope="function")
 async def isolate_test_tables(async_engine):
-    """Ensure core tables are clean before and after every test using engine-level connections.
+    """Ensure core tables are clean before and after every test.
 
-    Uses engine.begin() for proper transaction management and connection isolation.
-    This avoids session state conflicts that occur when using AsyncSession for DDL.
+    Uses TRUNCATE with engine-level connections for proper isolation.
     """
-    async def truncate_tables():
-        async with async_engine.begin() as conn:
-            await conn.execute(
-                text("TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE")
+    # Truncate before test
+    async with async_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
             )
-
-    # Clean before test
-    await truncate_tables()
+        )
 
     yield
 
-    # Clean after test
-    await truncate_tables()
+    # Truncate after test
+    async with async_engine.begin() as conn:
+        await conn.execute(
+            text(
+                "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
+            )
+        )
 
 
 @pytest_asyncio.fixture(loop_scope="function")
@@ -112,9 +186,6 @@ async def async_db_session(async_engine):
     This fixture provides a fresh async session for each test function.
     The session is properly closed after use, with cleanup handled by isolate_test_tables.
     """
-    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
-
-    # Create a sessionmaker bound to the engine
     session_maker = async_sessionmaker(
         async_engine,
         class_=AsyncSession,
@@ -125,5 +196,4 @@ async def async_db_session(async_engine):
         try:
             yield session
         finally:
-            # Always close the session; cleanup is handled by isolate_test_tables
             await session.close()
