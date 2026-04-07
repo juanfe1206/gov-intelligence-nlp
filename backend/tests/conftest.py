@@ -42,6 +42,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.main import app
+from app.db.session import get_db, async_session_maker
 from app.taxonomy.loader import load_taxonomy
 from app.taxonomy.schemas import TaxonomyConfig
 
@@ -74,8 +75,16 @@ def client():
     This fixture uses TestClient with lifespan to properly handle
     startup/shutdown events including taxonomy loading.
     """
-    with TestClient(app) as test_client:
-        yield test_client
+    async def _override_get_db():
+        async with async_session_maker() as session:
+            yield session
+
+    app.dependency_overrides[get_db] = _override_get_db
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.pop(get_db, None)
 
 
 @pytest.fixture
