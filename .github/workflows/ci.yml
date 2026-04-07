@@ -14,17 +14,19 @@ jobs:
     name: backend (python)
     runs-on: ubuntu-latest
     env:
-      DATABASE_URL: sqlite:///./ci.db
+      DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/gov_intelligence_nlp_ci
+      DATABASE_SYNC_URL: postgresql://postgres:postgres@localhost:5432/gov_intelligence_nlp_ci
       OPENAI_API_KEY: ci-placeholder-key
       APP_ENV: ci
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     defaults:
       run:
         working-directory: backend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.11"
           cache: pip
@@ -46,14 +48,16 @@ jobs:
   frontend:
     name: frontend (node)
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     defaults:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Set up Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: "20"
           cache: npm

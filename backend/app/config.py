@@ -1,7 +1,7 @@
 """Application configuration with environment variable validation."""
 
 import os
-from pydantic import ConfigDict
+from pydantic import ConfigDict, model_validator
 from pydantic_settings import BaseSettings
 
 
@@ -14,15 +14,12 @@ class Settings(BaseSettings):
 
     # Required
     DATABASE_URL: str
-    DATABASE_SYNC_URL: str
+    DATABASE_SYNC_URL: str | None = None
     OPENAI_API_KEY: str
 
     # Optional with defaults
     APP_ENV: str = "dev"
     LOG_LEVEL: str = "INFO"
-    OPENAI_CHAT_MODEL: str = ""
-    OPENAI_EMBEDDING_MODEL: str = ""
-
     # Backend configuration
     BACKEND_HOST: str = "127.0.0.1"
     BACKEND_PORT: int = 8000
@@ -43,6 +40,21 @@ class Settings(BaseSettings):
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     PROCESSING_BATCH_SIZE: int = 50
     PROCESSING_MAX_RETRIES: int = 3
+
+    @model_validator(mode="after")
+    def _ensure_sync_url(self) -> "Settings":
+        """Derive DATABASE_SYNC_URL when omitted (useful for CI sqlite)."""
+        if self.DATABASE_SYNC_URL:
+            return self
+
+        # For sqlite URLs, sync/async can safely use the same URL here.
+        if self.DATABASE_URL.startswith("sqlite"):
+            self.DATABASE_SYNC_URL = self.DATABASE_URL
+            return self
+
+        # Common async driver fallback.
+        self.DATABASE_SYNC_URL = self.DATABASE_URL.replace("+asyncpg", "+psycopg2")
+        return self
 
     def get_cors_origins(self) -> list[str]:
         """Parse CORS origins from comma-separated string.
