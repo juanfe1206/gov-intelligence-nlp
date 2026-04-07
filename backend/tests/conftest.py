@@ -11,9 +11,12 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Prefer backend/.env.test for isolated test runs.
 backend_root = Path(__file__).parent.parent
 test_env_path = backend_root / ".env.test"
-if test_env_path.exists() and os.environ.get("APP_ENV") != "ci":
-    # Do not override CI-provided env vars (DB host, creds, etc.).
-    # This keeps local .env.test useful while preserving pipeline config.
+is_github_ci = os.environ.get("GITHUB_ACTIONS") == "true" or os.environ.get("CI") == "true"
+if test_env_path.exists() and not is_github_ci:
+    # Local/dev: force .env.test so test runs are isolated and reproducible.
+    load_dotenv(test_env_path, override=True)
+elif test_env_path.exists() and is_github_ci:
+    # CI: rely on workflow-provided env vars and PostgreSQL service config.
     load_dotenv(test_env_path, override=False)
 else:
     # Safe local defaults to avoid accidental cloud DB usage from root .env.
