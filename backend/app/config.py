@@ -32,6 +32,11 @@ class Settings(BaseSettings):
     # Taxonomy configuration
     TAXONOMY_PATH: str = "config/taxonomy.yaml"
 
+    # Ingestion configuration
+    INGESTION_CSV_PATH: str = "data/posts.csv"
+    INGESTION_SOURCE_NAME: str = "csv_local"
+    INGESTION_PLATFORM_DEFAULT: str = ""
+
     def get_cors_origins(self) -> list[str]:
         """Parse CORS origins from comma-separated string.
 

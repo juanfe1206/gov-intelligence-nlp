@@ -30,6 +30,7 @@ else:
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 
 from app.main import app
 from app.taxonomy.loader import load_taxonomy
@@ -51,3 +52,20 @@ def client():
 def sample_taxonomy() -> TaxonomyConfig:
     """Create a sample taxonomy configuration for testing."""
     return load_taxonomy(Path(__file__).parent.parent / "config/taxonomy.yaml")
+
+
+@pytest.fixture
+async def async_db_session():
+    """Create an async database session for tests.
+
+    This fixture provides a fresh async session for each test,
+    ensuring test isolation.
+    """
+    from app.db.session import async_session_maker
+
+    async with async_session_maker() as session:
+        yield session
+        await session.rollback()
+        # Clean up committed test data to avoid cross-test contamination.
+        await session.execute(text("TRUNCATE TABLE ingestion_jobs, raw_posts RESTART IDENTITY CASCADE"))
+        await session.commit()

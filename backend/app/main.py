@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.ingestion import router as ingestion_router
 from app.api.taxonomy import router as taxonomy_router
 from app.config import settings
 from app.taxonomy.loader import load_taxonomy
@@ -61,6 +62,7 @@ async def root():
 
 
 app.include_router(taxonomy_router, prefix="/taxonomy", tags=["taxonomy"])
+app.include_router(ingestion_router, prefix="/ingest", tags=["ingestion"])
 
 
 if __name__ == "__main__":
