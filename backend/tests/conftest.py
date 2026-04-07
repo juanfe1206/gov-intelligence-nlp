@@ -68,13 +68,35 @@ def sample_taxonomy() -> TaxonomyConfig:
 def _setup_database_schema():
     """Set up the test database schema using raw SQL and sync connection."""
     import psycopg2
+    from psycopg2 import OperationalError
+    from urllib.parse import urlparse
 
     sync_url = os.environ.get(
         "DATABASE_SYNC_URL",
         "postgresql://postgres:postgres@localhost:5432/gov_intelligence_nlp_test",
     )
+    parsed = urlparse(sync_url)
+    db_host = (parsed.hostname or "").lower()
+    is_local_db = db_host in {"localhost", "127.0.0.1", "::1"}
+    allow_remote_db = os.environ.get("PYTEST_ALLOW_REMOTE_DB") == "1"
+    if not is_local_db and not allow_remote_db:
+        raise RuntimeError(
+            "Refusing to run DB tests against non-local DATABASE_SYNC_URL by default. "
+            "Set PYTEST_ALLOW_REMOTE_DB=1 to allow remote DB targets."
+        )
 
-    conn = psycopg2.connect(sync_url)
+    try:
+        conn = psycopg2.connect(
+            sync_url,
+            connect_timeout=10,
+            application_name="pytest_schema_setup",
+            options="-c statement_timeout=30000 -c lock_timeout=5000",
+        )
+    except OperationalError as exc:
+        raise RuntimeError(
+            f"Test database connection failed for DATABASE_SYNC_URL={sync_url!r}. "
+            "Check backend/.env.test and ensure the database is reachable."
+        ) from exc
     conn.autocommit = True
     cur = conn.cursor()
 
@@ -148,16 +170,12 @@ def _setup_database_schema():
     conn.close()
 
 
-@pytest.fixture(scope="session", autouse=True)
-def test_database_setup():
-    """Set up test database schema once per test session."""
-    _setup_database_schema()
-    yield
-
-
 @pytest_asyncio.fixture(scope="session", loop_scope="session")
 async def async_engine():
-    """Provide the async engine for test fixtures."""
+    """Provide the async engine for DB-backed test fixtures."""
+    # Initialize schema only when DB-backed fixtures are requested.
+    # This prevents non-DB unit tests from hanging on database connectivity.
+    _setup_database_schema()
     from app.db.session import engine
 
     yield engine
@@ -165,11 +183,18 @@ async def async_engine():
 
 
 @pytest_asyncio.fixture(autouse=True, loop_scope="function")
-async def isolate_test_tables(async_engine):
+async def isolate_test_tables(request):
     """Ensure core tables are clean before and after every test.
 
     Uses TRUNCATE with engine-level connections for proper isolation.
     """
+    needs_db = "async_db_session" in request.fixturenames or "client" in request.fixturenames
+    if not needs_db:
+        yield
+        return
+
+    async_engine = request.getfixturevalue("async_engine")
+
     # Truncate before test
     async with async_engine.begin() as conn:
         await conn.execute(text("SET LOCAL statement_timeout = '30s'"))
