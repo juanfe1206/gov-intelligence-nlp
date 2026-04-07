@@ -33,6 +33,7 @@ class ProcessingSummary(BaseModel):
     succeeded: int = Field(0, ge=0, description="Posts successfully classified")
     failed: int = Field(0, ge=0, description="Posts that failed classification")
     skipped: int = Field(0, ge=0, description="Posts already processed (skipped)")
+    job_id: str | None = Field(None, description="Persisted job identifier")
     errors: list[str] = Field(default_factory=list, description="Error messages for failed posts")
     started_at: datetime = Field(..., description="Processing start time")
     finished_at: datetime | None = Field(None, description="Processing finish time")

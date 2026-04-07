@@ -342,7 +342,7 @@ class TestProcessPosts:
     async def test_process_respects_batch_size(
         self, mock_embeddings, mock_classify, async_db_session
     ):
-        """Test that batch_size limits number of posts processed."""
+        """Test that batch_size controls chunk size but processes all available posts."""
         # Create multiple posts
         for i in range(5):
             raw_post = RawPost(
@@ -355,16 +355,22 @@ class TestProcessPosts:
         await async_db_session.commit()
 
         # Mock successful processing
-        mock_classify.return_value = [
-            ClassificationResult(topic="economy", sentiment="positive")
-        ] * 2
-        mock_embeddings.return_value = [[0.1] * 1536] * 2
+        mock_classify.side_effect = [
+            [ClassificationResult(topic="economy", sentiment="positive")] * 2,
+            [ClassificationResult(topic="economy", sentiment="positive")] * 2,
+            [ClassificationResult(topic="economy", sentiment="positive")] * 1,
+        ]
+        mock_embeddings.side_effect = [
+            [[0.1] * 1536] * 2,
+            [[0.1] * 1536] * 2,
+            [[0.1] * 1536] * 1,
+        ]
 
         taxonomy = {"topics": ["economy"]}
         summary = await process_posts(async_db_session, taxonomy, batch_size=2)
 
-        # Should only process 2 posts due to batch_size
-        assert summary.processed == 2
+        assert summary.processed == 5
+        assert mock_classify.call_count == 3
 
 
 class TestEmbeddingsMock:

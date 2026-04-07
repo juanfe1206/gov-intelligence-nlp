@@ -5,7 +5,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import select, and_, not_, exists, text
+from sqlalchemy import and_, exists, func, not_, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -55,13 +55,32 @@ async def get_unprocessed_posts(
         )
         conditions = [not_(has_processed) | has_failed]
 
-    query = select(RawPost).where(*conditions)
+    query = select(RawPost).where(*conditions).order_by(RawPost.created_at.asc(), RawPost.id.asc())
 
     if limit:
         query = query.limit(limit)
 
     result = await session.execute(query)
     return result.scalars().all()
+
+
+async def count_skipped_posts(
+    session: AsyncSession,
+    include_failed: bool = False,
+) -> int:
+    """Count posts skipped due to prior successful processing."""
+    if include_failed:
+        skipped_condition = exists().where(
+            and_(
+                ProcessedPost.raw_post_id == RawPost.id,
+                ProcessedPost.error_status.is_(False),
+            )
+        )
+    else:
+        skipped_condition = exists().where(ProcessedPost.raw_post_id == RawPost.id)
+
+    result = await session.execute(select(func.count()).select_from(RawPost).where(skipped_condition))
+    return int(result.scalar_one() or 0)
 
 
 async def process_posts(
@@ -90,51 +109,56 @@ async def process_posts(
     )
 
     try:
-        # Get unprocessed posts
-        posts = await get_unprocessed_posts(
+        summary.skipped = await count_skipped_posts(session, include_failed=force)
+
+        first_batch = await get_unprocessed_posts(
             session,
-            limit=batch_size,
+            limit=1,
             include_failed=force,
         )
-
-        if not posts:
+        if not first_batch:
             logger.info("No unprocessed posts found")
             summary.status = "completed"
             summary.finished_at = datetime.now(timezone.utc)
-            await _persist_job(summary)
+            summary.job_id = await _persist_job(summary)
             return summary
 
-        # Extract texts for batch processing
-        texts = [post.original_text for post in posts]
-        summary.processed = len(posts)
-
-        # Step 1: Classify all posts
-        logger.info(f"Classifying {len(posts)} posts")
-        classifications = await classify_batch(texts, taxonomy)
-
-        # Step 2: Generate embeddings for all posts
-        logger.info(f"Generating embeddings for {len(posts)} posts")
-        embeddings = await generate_embeddings(texts)
-
-        # Step 3: Insert results
         succeeded = 0
         failed = 0
 
-        for i, post in enumerate(posts):
-            classification = classifications[i]
-            embedding = embeddings[i]
+        while True:
+            posts = await get_unprocessed_posts(
+                session,
+                limit=batch_size,
+                include_failed=force,
+            )
+            if not posts:
+                break
 
-            if classification and embedding:
-                # Success - insert processed post
-                await _insert_processed_post(
-                    session,
-                    post.id,
-                    classification,
-                    embedding,
-                )
-                succeeded += 1
-            else:
-                # Failure - mark as error
+            texts = [post.original_text for post in posts]
+            summary.processed += len(posts)
+
+            logger.info(f"Classifying {len(posts)} posts")
+            classifications = await classify_batch(texts, taxonomy)
+
+            logger.info(f"Generating embeddings for {len(posts)} posts")
+            embeddings = await generate_embeddings(texts)
+
+            for i, post in enumerate(posts):
+                classification = classifications[i]
+                embedding = embeddings[i]
+
+                if classification and embedding:
+                    was_saved = await _insert_processed_post(
+                        session,
+                        post.id,
+                        classification,
+                        embedding,
+                    )
+                    if was_saved:
+                        succeeded += 1
+                    continue
+
                 error_msg = ""
                 if not classification:
                     error_msg += "Classification failed. "
@@ -147,10 +171,10 @@ async def process_posts(
 
         await session.commit()
 
-        # Determine final status
+        failure_rate = (failed / summary.processed) if summary.processed else 0.0
         if failed == 0:
             summary.status = "completed"
-        elif succeeded == 0:
+        elif failure_rate > 0.5:
             summary.status = "failed"
         else:
             summary.status = "partial"
@@ -171,7 +195,7 @@ async def process_posts(
         summary.finished_at = datetime.now(timezone.utc)
         await session.rollback()
 
-    await _persist_job(summary)
+    summary.job_id = await _persist_job(summary)
     return summary
 
 
@@ -180,7 +204,7 @@ async def _insert_processed_post(
     raw_post_id: Any,
     classification: Any,
     embedding: list[float],
-) -> None:
+) -> bool:
     """Insert a successfully processed post."""
     stmt = (
         pg_insert(ProcessedPost)
@@ -195,11 +219,25 @@ async def _insert_processed_post(
             model_version=MODEL_VERSION,
             error_status=False,
         )
-        .on_conflict_do_nothing(
+        .on_conflict_do_update(
             index_elements=["raw_post_id"],
+            set_={
+                "topic": classification.topic,
+                "subtopic": classification.subtopic,
+                "sentiment": classification.sentiment,
+                "target": classification.target,
+                "intensity": classification.intensity,
+                "embedding": embedding,
+                "model_version": MODEL_VERSION,
+                "error_status": False,
+                "error_message": None,
+                "processed_at": func.now(),
+            },
         )
+        .returning(ProcessedPost.id)
     )
-    await session.execute(stmt)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none() is not None
 
 
 async def _insert_failed_post(
@@ -218,14 +256,22 @@ async def _insert_failed_post(
             error_message=error_message,
             model_version=MODEL_VERSION,
         )
-        .on_conflict_do_nothing(
+        .on_conflict_do_update(
             index_elements=["raw_post_id"],
+            set_={
+                "topic": "error",
+                "sentiment": "neutral",
+                "error_status": True,
+                "error_message": error_message,
+                "model_version": MODEL_VERSION,
+                "processed_at": func.now(),
+            },
         )
     )
     await session.execute(stmt)
 
 
-async def _persist_job(summary: ProcessingSummary) -> None:
+async def _persist_job(summary: ProcessingSummary) -> str:
     """Persist processing job record to database."""
     from app.db.session import async_session_maker
 
@@ -249,18 +295,21 @@ async def _persist_job(summary: ProcessingSummary) -> None:
         )
         session.add(job)
         try:
+            await session.flush()
             await session.commit()
+            return str(job.id)
         except ProgrammingError as exc:
             await session.rollback()
             if "job_type" not in str(exc).lower():
                 raise
-            await session.execute(
+            result = await session.execute(
                 text(
                     """
                     INSERT INTO ingestion_jobs
                     (source, status, started_at, finished_at, row_count, inserted_count, skipped_count, duplicate_count, error_summary)
                     VALUES
                     (:source, :status, :started_at, :finished_at, :row_count, :inserted_count, :skipped_count, :duplicate_count, :error_summary)
+                    RETURNING id
                     """
                 ),
                 {
@@ -276,3 +325,4 @@ async def _persist_job(summary: ProcessingSummary) -> None:
                 },
             )
             await session.commit()
+            return str(result.scalar_one())

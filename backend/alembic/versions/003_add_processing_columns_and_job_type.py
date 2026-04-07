@@ -23,6 +23,14 @@ def _has_index(inspector: sa.Inspector, table_name: str, index_name: str) -> boo
     return any(idx["name"] == index_name for idx in inspector.get_indexes(table_name))
 
 
+def _count_non_null_embeddings(bind) -> int:
+    return int(
+        bind.execute(
+            sa.text("SELECT COUNT(*) FROM processed_posts WHERE embedding IS NOT NULL")
+        ).scalar_one()
+    )
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
@@ -84,29 +92,40 @@ def upgrade() -> None:
             """
         )
     ).scalar_one_or_none()
-    if embedding_type != "vector(1536)":
-        op.execute(
-            """
-            ALTER TABLE processed_posts
-            ALTER COLUMN embedding TYPE vector(1536)
-            USING CASE
-                WHEN embedding IS NULL THEN NULL
-                ELSE embedding::vector(1536)
-            END
-            """
-        )
+    if embedding_type == "vector(768)":
+        existing_count = _count_non_null_embeddings(bind)
+        if existing_count > 0:
+            raise RuntimeError(
+                "Cannot auto-migrate embeddings from vector(768) to vector(1536) with existing non-null values. "
+                "Backfill embeddings to 1536 dimensions before rerunning this migration."
+            )
+        op.execute("ALTER TABLE processed_posts ALTER COLUMN embedding TYPE vector(1536)")
 
 
 def downgrade() -> None:
-    # Revert vector dimension
-    op.execute("""
-        ALTER TABLE processed_posts
-        ALTER COLUMN embedding TYPE vector(768)
-        USING CASE
-            WHEN embedding IS NULL THEN NULL
-            ELSE embedding::vector(768)
-        END
-    """)
+    bind = op.get_bind()
+    embedding_type = bind.execute(
+        sa.text(
+            """
+            SELECT format_type(a.atttypid, a.atttypmod)
+            FROM pg_attribute a
+            JOIN pg_class c ON c.oid = a.attrelid
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE c.relname = 'processed_posts'
+              AND a.attname = 'embedding'
+              AND a.attnum > 0
+              AND NOT a.attisdropped
+            """
+        )
+    ).scalar_one_or_none()
+
+    if embedding_type == "vector(1536)":
+        existing_count = _count_non_null_embeddings(bind)
+        if existing_count > 0:
+            raise RuntimeError(
+                "Cannot auto-downgrade embeddings from vector(1536) to vector(768) with existing non-null values."
+            )
+        op.execute("ALTER TABLE processed_posts ALTER COLUMN embedding TYPE vector(768)")
 
     # Drop indexes
     op.drop_index("ix_processed_posts_error_status", table_name="processed_posts")

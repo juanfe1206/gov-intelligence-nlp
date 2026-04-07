@@ -1,6 +1,6 @@
 # Story 1.5: NLP Classification Pipeline
 
-Status: review
+Status: done
 
 ## Story
 
@@ -56,6 +56,17 @@ so that each raw post is classified by topic, subtopic, sentiment, target, and i
   - [x] `backend/tests/test_processing_api.py`
   - [x] Mock OpenAI API calls for deterministic testing
   - [x] Include batch processing, error handling, and idempotency cases
+
+### Review Findings
+
+- [x] [Review][Patch] Force reprocessing path cannot recover failed rows because inserts use `ON CONFLICT DO NOTHING` for existing `raw_post_id` records [backend/app/processing/service.py:120]
+- [x] [Review][Patch] Processing only handles a single `batch_size` slice and does not iterate until all unprocessed posts are handled [backend/app/processing/service.py:122]
+- [x] [Review][Patch] API returns placeholder `job_id=""`, breaking response contract and job traceability [backend/app/api/processing.py:517]
+- [x] [Review][Patch] Retry/backoff requirement for transient OpenAI failures is not implemented in classifier and embeddings flows [backend/app/processing/classifier.py:899]
+- [x] [Review][Patch] Taxonomy compliance is prompt-only; code does not validate topic/subtopic/target membership before persistence [backend/app/processing/classifier.py:922]
+- [x] [Review][Patch] `skipped` metric is never incremented, so idempotency/skipping stats are inaccurate [backend/app/processing/service.py:1241]
+- [x] [Review][Patch] Migration and downgrade cast vectors across dimensions (`vector(768)`/`vector(1536)`) in a way that can fail on existing data [backend/alembic/versions/003_add_processing_columns_and_job_type.py:396]
+- [x] [Review][Patch] API tests are weak for critical behavior (no real `force` assertion, always-true call-count checks, no `job_id` verification) [backend/tests/test_processing_api.py:1656]
 
 ## Developer Context
 

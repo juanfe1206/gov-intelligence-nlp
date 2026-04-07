@@ -2,7 +2,7 @@
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
@@ -22,7 +22,9 @@ router = APIRouter()
 )
 async def trigger_processing(
     request: Request,
-    process_request: ProcessRequest | None = None,
+    process_request: ProcessRequest | None = Body(default=None),
+    force: bool | None = Query(default=None),
+    batch_size: int | None = Query(default=None, ge=1, le=500),
     session: AsyncSession = Depends(get_db),
 ) -> ProcessResponse:
     """Trigger NLP processing on unprocessed posts.
@@ -43,6 +45,8 @@ async def trigger_processing(
         HTTPException 503: If taxonomy is not loaded
     """
     process_request = process_request or ProcessRequest()
+    effective_force = process_request.force if force is None else force
+    effective_batch_size = process_request.batch_size if batch_size is None else batch_size
 
     try:
         # Get taxonomy from app state
@@ -57,8 +61,8 @@ async def trigger_processing(
         summary = await process_posts(
             session,
             taxonomy,
-            force=process_request.force,
-            batch_size=process_request.batch_size,
+            force=effective_force,
+            batch_size=effective_batch_size,
         )
 
         if summary.status == "failed" and summary.succeeded == 0:
@@ -66,7 +70,7 @@ async def trigger_processing(
             logger.error(f"Processing failed: {summary.errors}")
 
         return ProcessResponse(
-            job_id="",  # Will be populated from job record
+            job_id=summary.job_id or "",
             status=summary.status,
             processed=summary.processed,
             succeeded=summary.succeeded,

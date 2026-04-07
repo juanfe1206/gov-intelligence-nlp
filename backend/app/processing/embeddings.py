@@ -1,10 +1,10 @@
 """OpenAI embedding generation with vector normalization."""
 
 import logging
-from typing import Any
 
 import numpy as np
 from openai import AsyncOpenAI
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.config import settings
 
@@ -39,6 +39,18 @@ def normalize_vector(vector: list[float]) -> list[float]:
     return normalized.tolist()
 
 
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(settings.PROCESSING_MAX_RETRIES),
+    wait=wait_exponential(multiplier=1, min=1, max=8),
+    retry=retry_if_exception_type(Exception),
+)
+async def _create_embeddings(*, model: str, texts: list[str]):
+    """Call OpenAI embeddings API with retry/backoff."""
+    client = get_openai_client()
+    return await client.embeddings.create(model=model, input=texts)
+
+
 async def generate_embeddings(
     texts: list[str],
     model: str | None = None,
@@ -55,15 +67,10 @@ async def generate_embeddings(
     if not texts:
         return []
 
-    client = get_openai_client()
     model = model or settings.OPENAI_EMBEDDING_MODEL
 
     try:
-        # OpenAI embeddings API supports up to 2048 texts per call
-        response = await client.embeddings.create(
-            model=model,
-            input=texts,
-        )
+        response = await _create_embeddings(model=model, texts=texts)
 
         embeddings = []
         for item in response.data:

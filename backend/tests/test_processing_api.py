@@ -1,13 +1,27 @@
 """Tests for NLP processing API endpoints."""
 
 from datetime import datetime, timezone
-from unittest.mock import patch, AsyncMock, MagicMock
+from types import SimpleNamespace
+from unittest.mock import patch
 
-import pytest
 from fastapi import status
 
-from app.models.raw_post import RawPost
-from app.processing.schemas import ClassificationResult
+
+def _summary(**overrides):
+    base = {
+        "job_id": "job-123",
+        "status": "completed",
+        "processed": 1,
+        "succeeded": 1,
+        "failed": 0,
+        "skipped": 0,
+        "errors": [],
+        "started_at": datetime.now(timezone.utc),
+        "finished_at": datetime.now(timezone.utc),
+        "duration_seconds": 1.0,
+    }
+    base.update(overrides)
+    return SimpleNamespace(**base)
 
 
 class TestProcessEndpoint:
@@ -23,18 +37,7 @@ class TestProcessEndpoint:
     @patch("app.api.processing.process_posts")
     def test_process_endpoint_success(self, mock_process, client):
         """Test successful processing via API."""
-        # Mock the service response
-        mock_process.return_value = AsyncMock(
-            status="completed",
-            processed=5,
-            succeeded=5,
-            failed=0,
-            skipped=0,
-            errors=[],
-            started_at=datetime.now(timezone.utc),
-            finished_at=datetime.now(timezone.utc),
-            duration_seconds=10.5,
-        )
+        mock_process.return_value = _summary(processed=5, succeeded=5, duration_seconds=10.5)
 
         response = client.post("/process")
 
@@ -47,55 +50,32 @@ class TestProcessEndpoint:
     @patch("app.api.processing.process_posts")
     def test_process_endpoint_with_force_param(self, mock_process, client):
         """Test processing with force=true parameter."""
-        mock_process.return_value = AsyncMock(
-            status="completed",
-            processed=3,
-            succeeded=3,
-            failed=0,
-            skipped=0,
-            errors=[],
-            started_at=datetime.now(timezone.utc),
-            finished_at=datetime.now(timezone.utc),
-            duration_seconds=5.0,
-        )
+        mock_process.return_value = _summary(processed=3, succeeded=3, duration_seconds=5.0)
 
         response = client.post("/process?force=true")
 
         assert response.status_code == status.HTTP_200_OK
-        # Verify force parameter was passed
-        call_kwargs = mock_process.call_args.kwargs if hasattr(mock_process.call_args, 'kwargs') else {}
+        assert mock_process.call_args.kwargs["force"] is True
 
     @patch("app.api.processing.process_posts")
     def test_process_endpoint_with_batch_size(self, mock_process, client):
         """Test processing with custom batch size."""
-        mock_process.return_value = AsyncMock(
-            status="completed",
-            processed=10,
-            succeeded=10,
-            failed=0,
-            skipped=0,
-            errors=[],
-            started_at=datetime.now(timezone.utc),
-            finished_at=datetime.now(timezone.utc),
-            duration_seconds=15.0,
-        )
+        mock_process.return_value = _summary(processed=10, succeeded=10, duration_seconds=15.0)
 
         response = client.post("/process", json={"batch_size": 10})
 
         assert response.status_code == status.HTTP_200_OK
+        assert mock_process.call_args.kwargs["batch_size"] == 10
 
     @patch("app.api.processing.process_posts")
     def test_process_endpoint_partial_failure(self, mock_process, client):
         """Test processing with some failures."""
-        mock_process.return_value = AsyncMock(
+        mock_process.return_value = _summary(
             status="partial",
             processed=10,
             succeeded=7,
             failed=3,
-            skipped=0,
             errors=["Post uuid1: Classification failed", "Post uuid2: API error"],
-            started_at=datetime.now(timezone.utc),
-            finished_at=datetime.now(timezone.utc),
             duration_seconds=20.0,
         )
 
@@ -111,15 +91,12 @@ class TestProcessEndpoint:
     @patch("app.api.processing.process_posts")
     def test_process_endpoint_complete_failure(self, mock_process, client):
         """Test processing with complete failure."""
-        mock_process.return_value = AsyncMock(
+        mock_process.return_value = _summary(
             status="failed",
             processed=5,
             succeeded=0,
             failed=5,
-            skipped=0,
             errors=["OpenAI API unavailable"],
-            started_at=datetime.now(timezone.utc),
-            finished_at=datetime.now(timezone.utc),
             duration_seconds=None,
         )
 
@@ -134,8 +111,13 @@ class TestProcessEndpoint:
 
     def test_process_endpoint_no_taxonomy(self, client):
         """Test error when taxonomy is not loaded."""
-        # This would require temporarily removing taxonomy from app state
-        # Skipping for now as it requires complex fixture setup
+        original_taxonomy = client.app.state.taxonomy
+        client.app.state.taxonomy = None
+        try:
+            response = client.post("/process")
+        finally:
+            client.app.state.taxonomy = original_taxonomy
+        assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
 
 class TestProcessResponseSchema:
@@ -144,17 +126,7 @@ class TestProcessResponseSchema:
     def test_response_includes_all_fields(self, client):
         """Test that response includes all expected fields."""
         with patch("app.api.processing.process_posts") as mock_process:
-            mock_process.return_value = AsyncMock(
-                status="completed",
-                processed=1,
-                succeeded=1,
-                failed=0,
-                skipped=0,
-                errors=[],
-                started_at=datetime.now(timezone.utc),
-                finished_at=datetime.now(timezone.utc),
-                duration_seconds=1.0,
-            )
+            mock_process.return_value = _summary()
 
             response = client.post("/process")
             data = response.json()
@@ -168,6 +140,7 @@ class TestProcessResponseSchema:
             assert "skipped" in data
             assert "errors" in data
             assert "duration_seconds" in data
+            assert data["job_id"] == "job-123"
 
 
 class TestProcessRequestValidation:
@@ -176,17 +149,7 @@ class TestProcessRequestValidation:
     def test_valid_batch_size(self, client):
         """Test that valid batch sizes are accepted."""
         with patch("app.api.processing.process_posts") as mock_process:
-            mock_process.return_value = AsyncMock(
-                status="completed",
-                processed=0,
-                succeeded=0,
-                failed=0,
-                skipped=0,
-                errors=[],
-                started_at=datetime.now(timezone.utc),
-                finished_at=datetime.now(timezone.utc),
-                duration_seconds=0.0,
-            )
+            mock_process.return_value = _summary(processed=0, succeeded=0, duration_seconds=0.0)
 
             # Valid batch sizes
             for size in [1, 50, 100, 500]:
@@ -207,53 +170,13 @@ class TestProcessRequestValidation:
         response = client.post("/process", json={"batch_size": -1})
         assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
+class TestQueryBodyPrecedence:
+    """Tests for query/body override precedence."""
 
-class TestProcessIntegration:
-    """Integration tests for the complete processing flow."""
-
-    @patch("app.processing.service.classify_batch")
-    @patch("app.processing.service.generate_embeddings")
-    def test_full_processing_flow(
-        self, mock_embeddings, mock_classify, client
-    ):
-        """Test the complete processing flow from API to database."""
-        # Mock successful classification and embeddings
-        mock_classify.return_value = [
-            ClassificationResult(
-                topic="economy",
-                subtopic="inflation",
-                sentiment="negative",
-                target="president",
-                intensity=8,
-            )
-        ]
-        mock_embeddings.return_value = [[0.1] * 1536]
-
-        response = client.post("/process")
-
-        # Response should be successful
+    @patch("app.api.processing.process_posts")
+    def test_query_params_override_body(self, mock_process, client):
+        mock_process.return_value = _summary()
+        response = client.post("/process?force=true&batch_size=9", json={"force": False, "batch_size": 2})
         assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-
-        # Pipeline hooks are patched; invocation count depends on available unprocessed rows.
-        assert mock_classify.call_count >= 0
-        assert mock_embeddings.call_count >= 0
-
-
-class TestProcessIdempotency:
-    """Tests for processing idempotency."""
-
-    @patch("app.processing.service.classify_batch")
-    @patch("app.processing.service.generate_embeddings")
-    def test_skip_already_processed(
-        self, mock_embeddings, mock_classify, client
-    ):
-        """Test that already processed posts are skipped."""
-        mock_classify.return_value = []
-        mock_embeddings.return_value = []
-
-        response = client.post("/process")
-
-        assert response.status_code == status.HTTP_200_OK
-        data = response.json()
-        assert data["skipped"] >= 0  # May be 0 if no posts exist
+        assert mock_process.call_args.kwargs["force"] is True
+        assert mock_process.call_args.kwargs["batch_size"] == 9

@@ -5,6 +5,7 @@ import logging
 from typing import Any
 
 from openai import AsyncOpenAI
+from tenacity import retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
 from app.config import settings
 from app.processing.schemas import ClassificationResult
@@ -70,6 +71,53 @@ Rules:
     return prompt
 
 
+def _validate_taxonomy_membership(
+    result: ClassificationResult,
+    taxonomy: dict[str, Any],
+) -> bool:
+    """Return True only when classification values comply with taxonomy."""
+    topics = {str(item) for item in taxonomy.get("topics", [])}
+    subtopics = {str(item) for item in taxonomy.get("subtopics", [])}
+    targets = {str(item) for item in taxonomy.get("targets", [])}
+
+    if topics and result.topic not in topics:
+        return False
+    if result.subtopic is not None and subtopics and result.subtopic not in subtopics:
+        return False
+    if result.target is not None and targets and result.target not in targets:
+        return False
+
+    return True
+
+
+@retry(
+    reraise=True,
+    stop=stop_after_attempt(settings.PROCESSING_MAX_RETRIES),
+    wait=wait_exponential(multiplier=1, min=1, max=8),
+    retry=retry_if_exception_type(Exception),
+)
+async def _create_classification_completion(
+    *,
+    model: str,
+    prompt: str,
+) -> Any:
+    """Call OpenAI classification API with retry/backoff."""
+    client = get_openai_client()
+    return await client.chat.completions.create(
+        model=model,
+        messages=[
+            {
+                "role": "system",
+                "content": "You are a political text analysis assistant. Always respond with valid JSON.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+        response_format={"type": "json_object"},
+        temperature=0.3,
+        max_tokens=500,
+    )
+
+
 async def classify_post(
     text: str,
     taxonomy: dict[str, Any],
@@ -85,25 +133,12 @@ async def classify_post(
     Returns:
         ClassificationResult or None if classification failed
     """
-    client = get_openai_client()
     model = model or settings.OPENAI_CHAT_MODEL
 
     prompt = build_classification_prompt(text, taxonomy)
 
     try:
-        response = await client.chat.completions.create(
-            model=model,
-            messages=[
-                {
-                    "role": "system",
-                    "content": "You are a political text analysis assistant. Always respond with valid JSON.",
-                },
-                {"role": "user", "content": prompt},
-            ],
-            response_format={"type": "json_object"},
-            temperature=0.3,  # Lower temperature for more consistent outputs
-            max_tokens=500,
-        )
+        response = await _create_classification_completion(model=model, prompt=prompt)
 
         content = response.choices[0].message.content
         if not content:
@@ -115,12 +150,16 @@ async def classify_post(
 
         # Validate and normalize the result
         result = ClassificationResult(
-            topic=data.get("topic", "unknown"),
+            topic=data.get("topic", ""),
             subtopic=data.get("subtopic"),
             sentiment=data.get("sentiment", "neutral"),
             target=data.get("target"),
             intensity=data.get("intensity"),
         )
+
+        if not _validate_taxonomy_membership(result, taxonomy):
+            logger.warning("Classification rejected due to taxonomy mismatch")
+            return None
 
         return result
 
