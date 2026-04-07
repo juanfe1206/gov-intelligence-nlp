@@ -7,6 +7,7 @@ import FilterBar, { FilterState, getDefaultDates } from './FilterBar'
 import TopicsPanel from './TopicsPanel'
 import PostsPanel from './PostsPanel'
 import ComparisonPanel from './ComparisonPanel'
+import SpikeAlertBanner from './SpikeAlertBanner'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -113,6 +114,7 @@ export default function DashboardContent() {
   if (isEmpty) {
     return (
       <>
+        <SpikeAlertBanner filters={filters} />
         <FilterBar filters={filters} onChange={setFilters} />
         <TopicsPanel
           filters={filters}
@@ -134,6 +136,7 @@ export default function DashboardContent() {
 
   return (
     <>
+      <SpikeAlertBanner filters={filters} />
       <FilterBar filters={filters} onChange={setFilters} />
 
       <div className="col-span-12">

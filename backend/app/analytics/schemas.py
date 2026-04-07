@@ -124,3 +124,24 @@ class ComparisonResponse(BaseModel):
     parties: list[PartyComparison]
     total_posts: int
     date_range: dict[str, str]  # {"start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"}
+
+
+class SpikeAlert(BaseModel):
+    """A detected spike in volume or negative sentiment for a topic."""
+
+    topic: str  # topic name (e.g., "vivienda")
+    topic_label: str  # display label (e.g., "Vivienda")
+    spike_type: str  # "volume" or "sentiment"
+    magnitude: float  # ratio for volume (e.g., 2.5 = 2.5× increase); percentage points for sentiment (e.g., 0.25 = +25pp)
+    recent_count: int  # posts in recent window
+    baseline_count: int  # posts in baseline window (0 if baseline is empty)
+    window_hours: int  # time window used for detection
+    suggested_question: str  # pre-filled Q&A question, e.g., "What are people saying about Vivienda right now?"
+
+
+class SpikesResponse(BaseModel):
+    """Response for spike detection endpoint."""
+
+    spikes: list[SpikeAlert]
+    window_hours: int
+    detected_at: str  # ISO date string "YYYY-MM-DD"

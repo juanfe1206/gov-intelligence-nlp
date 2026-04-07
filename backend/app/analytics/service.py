@@ -1,5 +1,6 @@
 """Analytics service for volume and sentiment queries."""
 
+import asyncio
 from datetime import date, timedelta
 from collections import defaultdict
 
@@ -21,6 +22,8 @@ from app.analytics.schemas import (
     SubtopicSentiment,
     PartyComparison,
     ComparisonResponse,
+    SpikeAlert,
+    SpikesResponse,
 )
 from app.taxonomy.schemas import TaxonomyConfig
 
@@ -539,4 +542,159 @@ async def get_comparison(
         parties=results,
         total_posts=sum(p.post_count for p in results),
         date_range={"start_date": str(start_date), "end_date": str(end_date)},
+    )
+
+
+async def get_spikes(
+    session: AsyncSession,
+    taxonomy: TaxonomyConfig,
+    window_hours: int = 24,
+    volume_threshold: float = 2.0,  # spike if recent > baseline * threshold
+    sentiment_threshold: float = 0.20,  # spike if recent negative% > baseline negative% + threshold
+    platform: str | None = None,
+) -> SpikesResponse:
+    """Detect volume and sentiment spikes across all topics.
+
+    Compares the recent window (last `window_hours`) against the prior
+    equal-length baseline window. Returns spikes sorted by magnitude desc.
+
+    Posts are bucketed by calendar day (`Date`); `window_hours` is mapped to
+    whole days so windows stay disjoint. (`date - timedelta(hours=n)` only
+    uses whole days, so hours must not be applied directly to `date`.)
+    """
+    now = date.today()
+    span_days = max(1, (window_hours + 23) // 24)
+    recent_end = now
+    recent_start = recent_end - timedelta(days=span_days - 1)
+    baseline_end = recent_start - timedelta(days=1)
+    baseline_start = baseline_end - timedelta(days=span_days - 1)
+
+    topic_label_map = {t.name: t.label for t in taxonomy.topics}
+
+    base_error_filter = or_(
+        ProcessedPost.error_status.is_(False),
+        ProcessedPost.error_status.is_(None),
+    )
+
+    date_col = cast(RawPost.created_at, Date)
+
+    def _platform_filter() -> list:
+        return [RawPost.platform == platform] if platform else []
+
+    # Query volume per topic for recent and baseline windows in one pass each
+    async def _topic_counts(start: date, end: date) -> dict[str, int]:
+        stmt = (
+            select(ProcessedPost.topic, func.count().label("cnt"))
+            .select_from(ProcessedPost)
+            .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+            .where(
+                and_(
+                    date_col >= start,
+                    date_col <= end,
+                    base_error_filter,
+                    *_platform_filter(),
+                )
+            )
+            .group_by(ProcessedPost.topic)
+        )
+        result = await session.execute(stmt)
+        return {row.topic: row.cnt for row in result.all() if row.topic}
+
+    async def _topic_sentiment_counts(start: date, end: date) -> dict[str, dict[str, int]]:
+        """Returns {topic: {positive: N, neutral: N, negative: N, total: N}}"""
+        stmt = (
+            select(
+                ProcessedPost.topic,
+                ProcessedPost.sentiment,
+                func.count().label("cnt"),
+            )
+            .select_from(ProcessedPost)
+            .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+            .where(
+                and_(
+                    date_col >= start,
+                    date_col <= end,
+                    base_error_filter,
+                    *_platform_filter(),
+                )
+            )
+            .group_by(ProcessedPost.topic, ProcessedPost.sentiment)
+        )
+        result = await session.execute(stmt)
+        out: dict[str, dict[str, int]] = {}
+        for row in result.all():
+            if not row.topic:
+                continue
+            t = out.setdefault(
+                row.topic, {"positive": 0, "neutral": 0, "negative": 0, "total": 0}
+            )
+            sentiment = (row.sentiment or "neutral").lower()
+            if sentiment in t:
+                t[sentiment] += row.cnt
+            t["total"] += row.cnt
+        return out
+
+    recent_vol, baseline_vol, recent_sent, baseline_sent = await asyncio.gather(
+        _topic_counts(recent_start, recent_end),
+        _topic_counts(baseline_start, baseline_end),
+        _topic_sentiment_counts(recent_start, recent_end),
+        _topic_sentiment_counts(baseline_start, baseline_end),
+    )
+
+    spikes: list[SpikeAlert] = []
+
+    for topic_name in set(list(recent_vol.keys()) + list(recent_sent.keys())):
+        label = topic_label_map.get(topic_name, topic_name)
+        suggested_q = f"What are people saying about {label} right now?"
+
+        r_cnt = recent_vol.get(topic_name, 0)
+        b_cnt = baseline_vol.get(topic_name, 0)
+
+        # Volume spike detection
+        if r_cnt > 0 and (b_cnt == 0 or r_cnt / max(b_cnt, 1) >= volume_threshold):
+            magnitude = r_cnt / max(b_cnt, 1)
+            spikes.append(
+                SpikeAlert(
+                    topic=topic_name,
+                    topic_label=label,
+                    spike_type="volume",
+                    magnitude=round(magnitude, 2),
+                    recent_count=r_cnt,
+                    baseline_count=b_cnt,
+                    window_hours=window_hours,
+                    suggested_question=suggested_q,
+                )
+            )
+
+        # Sentiment spike detection
+        r_sent = recent_sent.get(topic_name, {})
+        b_sent = baseline_sent.get(topic_name, {})
+        r_total = r_sent.get("total", 0)
+        b_total = b_sent.get("total", 0)
+        if r_total > 0:
+            r_neg_pct = r_sent.get("negative", 0) / r_total
+            b_neg_pct = b_sent.get("negative", 0) / b_total if b_total > 0 else 0.0
+            delta = r_neg_pct - b_neg_pct
+            if delta >= sentiment_threshold:
+                spikes.append(
+                    SpikeAlert(
+                        topic=topic_name,
+                        topic_label=label,
+                        spike_type="sentiment",
+                        magnitude=round(delta, 3),
+                        recent_count=r_sent.get("negative", 0),
+                        baseline_count=b_sent.get("negative", 0),
+                        window_hours=window_hours,
+                        suggested_question=suggested_q,
+                    )
+                )
+
+    # Sort by magnitude descending; limit to top 5 most significant spikes
+    spikes.sort(key=lambda s: s.magnitude, reverse=True)
+    spikes = spikes[:5]
+
+    return SpikesResponse(
+        spikes=spikes,
+        window_hours=window_hours,
+        detected_at=str(date.today()),
     )

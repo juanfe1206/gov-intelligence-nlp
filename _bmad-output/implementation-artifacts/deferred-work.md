@@ -15,3 +15,7 @@
 
 - `get_comparison` contains an unreachable `parties = [None]` branch given the HTTP layer rejects empty `parties`; harmless but worth removing if the service is only called from the route.
 - Party comparison control relies on hover to open the checklist; consider focusable trigger + click/tap for keyboard and mobile users when polishing accessibility.
+
+## Deferred from: code review of 2-7-spike-alert-detection-banner.md (2026-04-08)
+
+- Top-5 sort mixes volume ratios with sentiment deltas on a single `magnitude` scale, so volume spikes tend to crowd out sentiment spikes; matches current spec but may need product input if balanced surfacing is required.

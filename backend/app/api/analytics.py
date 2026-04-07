@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.session import get_db
-from app.analytics.schemas import VolumeResponse, SentimentResponse, PlatformsResponse, TopicsResponse, PostsResponse, ComparisonResponse
+from app.analytics.schemas import VolumeResponse, SentimentResponse, PlatformsResponse, TopicsResponse, PostsResponse, ComparisonResponse, SpikesResponse
 from app.analytics import service as analytics_service
 from app.models.raw_post import RawPost
 
@@ -143,3 +143,24 @@ async def get_comparison(
         )
     taxonomy = request.app.state.taxonomy
     return await analytics_service.get_comparison(session, taxonomy, topic, parties, start_date, end_date, platform)
+
+
+@router.get("/spikes", response_model=SpikesResponse)
+async def get_spikes(
+    request: Request,
+    window_hours: int = Query(default=24, ge=2, le=168, description="Detection window in hours (2–168)"),
+    volume_threshold: float = Query(default=2.0, ge=1.0, description="Volume spike ratio threshold (default 2.0 = 2× increase)"),
+    sentiment_threshold: float = Query(default=0.20, ge=0.0, le=1.0, description="Sentiment spike delta threshold in percentage points (default 0.20 = +20pp)"),
+    platform: str | None = Query(default=None, description="Filter by platform"),
+    session: AsyncSession = Depends(get_db),
+) -> SpikesResponse:
+    """Detect volume and sentiment spikes across all topics."""
+    taxonomy = request.app.state.taxonomy
+    return await analytics_service.get_spikes(
+        session,
+        taxonomy,
+        window_hours=window_hours,
+        volume_threshold=volume_threshold,
+        sentiment_threshold=sentiment_threshold,
+        platform=platform,
+    )
