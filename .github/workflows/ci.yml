@@ -32,6 +32,7 @@ jobs:
       DATABASE_SYNC_URL: postgresql://postgres:postgres@localhost:5432/gov_intelligence_nlp_ci
       OPENAI_API_KEY: ci-placeholder-key
       APP_ENV: ci
+      RUN_DB_TESTS: "1"
       FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     defaults:
       run:

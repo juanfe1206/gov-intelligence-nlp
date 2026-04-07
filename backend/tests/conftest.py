@@ -46,6 +46,27 @@ from app.taxonomy.loader import load_taxonomy
 from app.taxonomy.schemas import TaxonomyConfig
 
 
+def pytest_configure(config):
+    """Register custom markers used by this test suite."""
+    config.addinivalue_line(
+        "markers",
+        "db: marks tests that require a live database connection",
+    )
+
+
+def pytest_collection_modifyitems(config, items):
+    """Auto-mark DB tests and skip them unless explicitly enabled."""
+    run_db_tests = os.environ.get("RUN_DB_TESTS") == "1"
+    skip_db = pytest.mark.skip(reason="DB tests disabled. Set RUN_DB_TESTS=1 to enable.")
+
+    for item in items:
+        needs_db = "async_db_session" in item.fixturenames or "client" in item.fixturenames
+        if needs_db:
+            item.add_marker(pytest.mark.db)
+            if not run_db_tests:
+                item.add_marker(skip_db)
+
+
 @pytest.fixture
 def client():
     """Create a test client for making HTTP requests.
