@@ -11,8 +11,10 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Prefer backend/.env.test for isolated test runs.
 backend_root = Path(__file__).parent.parent
 test_env_path = backend_root / ".env.test"
-if test_env_path.exists():
-    load_dotenv(test_env_path, override=True)
+if test_env_path.exists() and os.environ.get("APP_ENV") != "ci":
+    # Do not override CI-provided env vars (DB host, creds, etc.).
+    # This keeps local .env.test useful while preserving pipeline config.
+    load_dotenv(test_env_path, override=False)
 else:
     # Safe local defaults to avoid accidental cloud DB usage from root .env.
     os.environ.setdefault(
