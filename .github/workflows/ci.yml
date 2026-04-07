@@ -13,6 +13,20 @@ jobs:
   backend:
     name: backend (python)
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: gov_intelligence_nlp_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d gov_intelligence_nlp_ci"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgresql+asyncpg://postgres:postgres@localhost:5432/gov_intelligence_nlp_ci
       DATABASE_SYNC_URL: postgresql://postgres:postgres@localhost:5432/gov_intelligence_nlp_ci
