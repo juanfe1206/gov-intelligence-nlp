@@ -25,6 +25,7 @@ export interface FilterState {
   platform: string
   startDate: string
   endDate: string
+  selectedParties: string[]
 }
 
 interface Props {
@@ -111,7 +112,15 @@ export default function FilterBar({ filters, onChange }: Props) {
 
   function handleClear() {
     const { startDate, endDate } = getDefaultDates(7)
-    onChange({ topic: '', subtopic: '', target: '', platform: '', startDate, endDate })
+    onChange({ topic: '', subtopic: '', target: '', platform: '', startDate, endDate, selectedParties: [] })
+  }
+
+  function handlePartyToggle(partyName: string) {
+    const current = filters.selectedParties || []
+    const updated = current.includes(partyName)
+      ? current.filter((p) => p !== partyName)
+      : [...current, partyName]
+    onChange({ ...filters, selectedParties: updated })
   }
 
   const targets = taxonomy
@@ -126,6 +135,7 @@ export default function FilterBar({ filters, onChange }: Props) {
     filters.subtopic ||
     filters.target ||
     filters.platform ||
+    (filters.selectedParties?.length ?? 0) > 0 ||
     filters.startDate !== defaultDates.startDate ||
     filters.endDate !== defaultDates.endDate
 
@@ -175,6 +185,41 @@ export default function FilterBar({ filters, onChange }: Props) {
           <option key={p} value={p}>{p}</option>
         ))}
       </select>
+
+      {/* Party multi-select dropdown */}
+      <div className="relative group">
+        <button
+          type="button"
+          className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground min-w-[160px] text-left flex items-center justify-between"
+        >
+          <span>
+            {(filters.selectedParties?.length ?? 0) === 0
+              ? 'Compare Parties'
+              : `${filters.selectedParties.length} selected`}
+          </span>
+          <span className="ml-2">▼</span>
+        </button>
+        <div className="absolute top-full left-0 mt-1 w-64 bg-surface border border-border rounded shadow-lg hidden group-hover:block z-50 p-2">
+          <p className="text-muted [font-size:var(--font-size-small)] mb-2 px-2">Select parties to compare:</p>
+          {targets.map((t) => {
+            const isSelected = filters.selectedParties?.includes(t.name) ?? false
+            return (
+              <label
+                key={t.name}
+                className="flex items-center gap-2 px-2 py-1 hover:bg-surface-raised cursor-pointer rounded"
+              >
+                <input
+                  type="checkbox"
+                  checked={isSelected}
+                  onChange={() => handlePartyToggle(t.name)}
+                  className="rounded"
+                />
+                <span className="[font-size:var(--font-size-small)]">{t.label}</span>
+              </label>
+            )
+          })}
+        </div>
+      </div>
 
       <TimeRangeSelect
         startDate={filters.startDate}

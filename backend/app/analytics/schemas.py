@@ -89,3 +89,38 @@ class PostsResponse(BaseModel):
 
     posts: list[PostItem]
     total: int
+
+
+class SubtopicSentiment(BaseModel):
+    """Subtopic with sentiment breakdown for a party."""
+
+    subtopic: str
+    subtopic_label: str
+    positive_count: int
+    neutral_count: int
+    negative_count: int
+    total: int
+    sentiment_percentage: dict[str, float]  # {"positive": 0.45, "neutral": 0.30, "negative": 0.25}
+
+
+class PartyComparison(BaseModel):
+    """Per-party sentiment and volume breakdown for comparison view."""
+
+    party: str  # target name (e.g. "partido-socialista")
+    party_label: str  # display label
+    post_count: int
+    positive_count: int
+    neutral_count: int
+    negative_count: int
+    sentiment_percentage: dict[str, float]  # {"positive": 0.X, "neutral": 0.Y, "negative": 0.Z}
+    top_subtopics: list[SubtopicSentiment]  # up to 3–5 subtopics ranked by negative sentiment
+
+
+class ComparisonResponse(BaseModel):
+    """Response for cross-party sentiment comparison."""
+
+    topic: str
+    topic_label: str
+    parties: list[PartyComparison]
+    total_posts: int
+    date_range: dict[str, str]  # {"start_date": "YYYY-MM-DD", "end_date": "YYYY-MM-DD"}

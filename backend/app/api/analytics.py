@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.session import get_db
-from app.analytics.schemas import VolumeResponse, SentimentResponse, PlatformsResponse, TopicsResponse, PostsResponse
+from app.analytics.schemas import VolumeResponse, SentimentResponse, PlatformsResponse, TopicsResponse, PostsResponse, ComparisonResponse
 from app.analytics import service as analytics_service
 from app.models.raw_post import RawPost
 
@@ -121,3 +121,25 @@ async def get_posts(
         raise HTTPException(status_code=422, detail="start_date must be less than or equal to end_date")
     taxonomy = request.app.state.taxonomy
     return await analytics_service.get_posts(session, taxonomy, start_date, end_date, topic, subtopic, target, platform)
+
+
+@router.get("/compare", response_model=ComparisonResponse)
+async def get_comparison(
+    request: Request,
+    topic: str = Query(..., description="Topic name (e.g., 'vivienda')"),
+    parties: list[str] = Query(default=[], description="List of target/party names to compare (e.g., ?parties=party1&parties=party2)"),
+    start_date: date = Query(default_factory=_default_start),
+    end_date: date = Query(default_factory=_default_end),
+    platform: str | None = Query(default=None, description="Filter by platform"),
+    session: AsyncSession = Depends(get_db),
+) -> ComparisonResponse:
+    """Get per-party sentiment and volume comparison for a topic."""
+    if start_date > end_date:
+        raise HTTPException(status_code=422, detail="start_date must be less than or equal to end_date")
+    if len(parties) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="At least two parties must be specified for comparison",
+        )
+    taxonomy = request.app.state.taxonomy
+    return await analytics_service.get_comparison(session, taxonomy, topic, parties, start_date, end_date, platform)

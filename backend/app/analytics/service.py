@@ -3,7 +3,7 @@
 from datetime import date, timedelta
 from collections import defaultdict
 
-from sqlalchemy import func, cast, Date, and_, or_, select
+from sqlalchemy import func, cast, Date, and_, or_, select, desc, case
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.raw_post import RawPost
@@ -18,6 +18,9 @@ from app.analytics.schemas import (
     TopicsResponse,
     PostItem,
     PostsResponse,
+    SubtopicSentiment,
+    PartyComparison,
+    ComparisonResponse,
 )
 from app.taxonomy.schemas import TaxonomyConfig
 
@@ -372,3 +375,168 @@ async def get_posts(
         )
 
     return PostsResponse(posts=posts, total=total)
+
+
+async def get_comparison(
+    session: AsyncSession,
+    taxonomy: TaxonomyConfig,
+    topic: str,
+    parties: list[str],
+    start_date: date,
+    end_date: date,
+    platform: str | None = None,
+) -> ComparisonResponse:
+    """Get per-party sentiment and volume breakdown for a given topic and time range.
+
+    Returns post counts, sentiment distributions (positive/neutral/negative),
+    and top 3–5 subtopics ranked by negative sentiment for each party.
+    """
+    if len(parties) < 2:
+        raise ValueError("get_comparison requires at least two parties")
+
+    date_col = cast(RawPost.created_at, Date)
+    topic_label_map = {t.name: t.label for t in taxonomy.topics}
+
+    # Build per-topic subtopic label map for accurate label lookup
+    topic_subtopic_labels: dict[str, dict[str, str]] = {}
+    for t in taxonomy.topics:
+        topic_subtopic_labels[t.name] = {st.name: st.label for st in t.subtopics}
+
+    # Target label map
+    target_label_map: dict[str, str] = {t.name: t.label for t in taxonomy.targets}
+
+    results: list[PartyComparison] = []
+
+    # Query each party separately for clarity
+    for party in parties:
+        base_filters = [
+            date_col >= start_date,
+            date_col <= end_date,
+            ProcessedPost.topic == topic,
+            or_(
+                ProcessedPost.error_status.is_(False),
+                ProcessedPost.error_status.is_(None),
+            ),
+        ]
+        base_filters.append(ProcessedPost.target == party)
+        if platform is not None:
+            base_filters.append(RawPost.platform == platform)
+
+        # Main query: post counts and sentiment distribution
+        stmt = (
+            select(
+                func.count().label("total"),
+                func.sum(
+                    case(
+                        (ProcessedPost.sentiment == "positive", 1),
+                        else_=0,
+                    )
+                ).label("positive_count"),
+                func.sum(
+                    case(
+                        (ProcessedPost.sentiment == "neutral", 1),
+                        else_=0,
+                    )
+                ).label("neutral_count"),
+                func.sum(
+                    case(
+                        (ProcessedPost.sentiment == "negative", 1),
+                        else_=0,
+                    )
+                ).label("negative_count"),
+            )
+            .select_from(ProcessedPost)
+            .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+            .where(and_(*base_filters))
+        )
+        result = await session.execute(stmt)
+        row = result.first()
+
+        post_count = row.total or 0
+        positive_count = row.positive_count or 0
+        neutral_count = row.neutral_count or 0
+        negative_count = row.negative_count or 0
+
+        sentiment_pct = {
+            "positive": round(positive_count / post_count, 3) if post_count > 0 else 0.0,
+            "neutral": round(neutral_count / post_count, 3) if post_count > 0 else 0.0,
+            "negative": round(negative_count / post_count, 3) if post_count > 0 else 0.0,
+        }
+
+        # Query top subtopics ranked by negative sentiment count
+        subtopic_stmt = (
+            select(
+                ProcessedPost.subtopic,
+                func.sum(
+                    case(
+                        (ProcessedPost.sentiment == "positive", 1),
+                        else_=0,
+                    )
+                ).label("positive_count"),
+                func.sum(
+                    case(
+                        (ProcessedPost.sentiment == "neutral", 1),
+                        else_=0,
+                    )
+                ).label("neutral_count"),
+                func.sum(
+                    case(
+                        (ProcessedPost.sentiment == "negative", 1),
+                        else_=0,
+                    )
+                ).label("negative_count"),
+                func.count().label("total"),
+            )
+            .select_from(ProcessedPost)
+            .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+            .where(and_(*base_filters))
+            .group_by(ProcessedPost.subtopic)
+            .order_by(desc("negative_count"))
+            .limit(5)
+        )
+        subtopic_result = await session.execute(subtopic_stmt)
+
+        top_subtopics: list[SubtopicSentiment] = []
+        for st_row in subtopic_result.all():
+            st_name = st_row.subtopic or "unknown"
+            st_positive = st_row.positive_count or 0
+            st_neutral = st_row.neutral_count or 0
+            st_negative = st_row.negative_count or 0
+            st_total = st_row.total or 0
+
+            st_label = topic_subtopic_labels.get(topic, {}).get(st_name, st_name)
+            st_pct = {
+                "positive": round(st_positive / st_total, 3) if st_total > 0 else 0.0,
+                "neutral": round(st_neutral / st_total, 3) if st_total > 0 else 0.0,
+                "negative": round(st_negative / st_total, 3) if st_total > 0 else 0.0,
+            }
+
+            top_subtopics.append(SubtopicSentiment(
+                subtopic=st_name,
+                subtopic_label=st_label,
+                positive_count=st_positive,
+                neutral_count=st_neutral,
+                negative_count=st_negative,
+                total=st_total,
+                sentiment_percentage=st_pct,
+            ))
+
+        party_label = target_label_map.get(party, party)
+        results.append(PartyComparison(
+            party=party,
+            party_label=party_label,
+            post_count=post_count,
+            positive_count=positive_count,
+            neutral_count=neutral_count,
+            negative_count=negative_count,
+            sentiment_percentage=sentiment_pct,
+            top_subtopics=top_subtopics,
+        ))
+
+    return ComparisonResponse(
+        topic=topic,
+        topic_label=topic_label_map.get(topic, topic),
+        parties=results,
+        total_posts=sum(p.post_count for p in results),
+        date_range={"start_date": str(start_date), "end_date": str(end_date)},
+    )

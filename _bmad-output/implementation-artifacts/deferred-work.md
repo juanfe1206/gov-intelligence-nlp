@@ -10,3 +10,8 @@
 ## Deferred from: code review of 1-6-ingestion-job-status-tracking-api.md (2026-04-07)
 
 - Existing processing selection can double-process posts under concurrent workers due to non-claiming reads; address with a concurrency-safe claim/locking strategy in a dedicated follow-up.
+
+## Deferred from: code review of 2-6-cross-party-sentiment-comparison.md (2026-04-08)
+
+- `get_comparison` contains an unreachable `parties = [None]` branch given the HTTP layer rejects empty `parties`; harmless but worth removing if the service is only called from the route.
+- Party comparison control relies on hover to open the checklist; consider focusable trigger + click/tap for keyboard and mobile users when polishing accessibility.

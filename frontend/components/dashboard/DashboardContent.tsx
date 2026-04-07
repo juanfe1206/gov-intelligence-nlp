@@ -6,6 +6,7 @@ import SentimentChart from '@/components/charts/SentimentChart'
 import FilterBar, { FilterState, getDefaultDates } from './FilterBar'
 import TopicsPanel from './TopicsPanel'
 import PostsPanel from './PostsPanel'
+import ComparisonPanel from './ComparisonPanel'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -28,6 +29,7 @@ export default function DashboardContent() {
     platform: '',
     startDate: defaultDates.startDate,
     endDate: defaultDates.endDate,
+    selectedParties: [],
   })
   const [volumeData, setVolumeData] = useState<VolumeData | null>(null)
   const [sentimentData, setSentimentData] = useState<SentimentData | null>(null)
@@ -101,7 +103,12 @@ export default function DashboardContent() {
   }
 
   const isEmpty = !volumeData?.data?.length && !sentimentData?.data?.length
-  const hasFilters = filters.topic || filters.subtopic || filters.target || filters.platform
+  const hasFilters =
+    filters.topic ||
+    filters.subtopic ||
+    filters.target ||
+    filters.platform ||
+    (filters.selectedParties?.length ?? 0) > 0
 
   if (isEmpty) {
     return (
@@ -112,6 +119,7 @@ export default function DashboardContent() {
           onTopicSelect={handleTopicSelect}
           onClearTopic={handleClearTopic}
         />
+        <ComparisonPanel filters={filters} />
         <PostsPanel filters={filters} />
         <div className="col-span-12">
           <p className="text-muted [font-size:var(--font-size-body)]">
@@ -156,6 +164,7 @@ export default function DashboardContent() {
         onTopicSelect={handleTopicSelect}
         onClearTopic={handleClearTopic}
       />
+      <ComparisonPanel filters={filters} />
       <PostsPanel filters={filters} />
     </>
   )
