@@ -56,6 +56,26 @@ jobs:
         run: |
           python -c "import main; from app.main import app; print(app.title)"
 
+      - name: Ensure pgvector extension is enabled
+        run: |
+          python - <<'PY'
+          import os
+          import psycopg2
+
+          dsn = os.environ["DATABASE_SYNC_URL"]
+          conn = psycopg2.connect(dsn)
+          conn.autocommit = True
+          cur = conn.cursor()
+          cur.execute('CREATE EXTENSION IF NOT EXISTS "vector"')
+          cur.execute("SELECT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'vector')")
+          enabled = cur.fetchone()[0]
+          cur.close()
+          conn.close()
+          if not enabled:
+              raise SystemExit("pgvector extension is not enabled")
+          print("pgvector extension enabled")
+          PY
+
       - name: Run tests
         run: |
           pytest -q
