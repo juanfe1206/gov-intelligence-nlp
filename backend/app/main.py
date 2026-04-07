@@ -5,6 +5,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.analytics import router as analytics_router
 from app.api.ingestion import router as ingestion_router
 from app.api.jobs import router as jobs_router
 from app.api.processing import router as processing_router
@@ -67,6 +68,7 @@ app.include_router(taxonomy_router, prefix="/taxonomy", tags=["taxonomy"])
 app.include_router(ingestion_router, prefix="/ingest", tags=["ingestion"])
 app.include_router(processing_router, prefix="/process", tags=["processing"])
 app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
+app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
 
 
 if __name__ == "__main__":
