@@ -72,34 +72,58 @@ async def ensure_test_schema_current():
         await conn.run_sync(Base.metadata.create_all)
 
 
-@pytest_asyncio.fixture(autouse=True, loop_scope="session")
-async def isolate_test_tables():
-    """Ensure core tables are clean before and after every test."""
-    from app.db.session import async_session_maker
+@pytest_asyncio.fixture(scope="session", loop_scope="session")
+async def async_engine():
+    """Provide the async engine for test fixtures.
 
-    async with async_session_maker() as session:
-        await session.execute(text("TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"))
-        await session.commit()
+    Yields the engine and ensures proper cleanup after the test session.
+    """
+    from app.db.session import engine
+    yield engine
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture(autouse=True, loop_scope="function")
+async def isolate_test_tables(async_engine):
+    """Ensure core tables are clean before and after every test using engine-level connections.
+
+    Uses engine.begin() for proper transaction management and connection isolation.
+    This avoids session state conflicts that occur when using AsyncSession for DDL.
+    """
+    async def truncate_tables():
+        async with async_engine.begin() as conn:
+            await conn.execute(
+                text("TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE")
+            )
+
+    # Clean before test
+    await truncate_tables()
 
     yield
 
-    async with async_session_maker() as session:
-        await session.execute(text("TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"))
-        await session.commit()
+    # Clean after test
+    await truncate_tables()
 
 
-@pytest_asyncio.fixture(loop_scope="session")
-async def async_db_session():
+@pytest_asyncio.fixture(loop_scope="function")
+async def async_db_session(async_engine):
     """Create an async database session for tests.
 
-    This fixture provides a fresh async session for each test,
-    ensuring test isolation.
+    This fixture provides a fresh async session for each test function.
+    The session is properly closed after use, with cleanup handled by isolate_test_tables.
     """
-    from app.db.session import async_session_maker
+    from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-    async with async_session_maker() as session:
-        yield session
-        await session.rollback()
-        # Clean up committed test data to avoid cross-test contamination.
-        await session.execute(text("TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"))
-        await session.commit()
+    # Create a sessionmaker bound to the engine
+    session_maker = async_sessionmaker(
+        async_engine,
+        class_=AsyncSession,
+        expire_on_commit=False,
+    )
+
+    async with session_maker() as session:
+        try:
+            yield session
+        finally:
+            # Always close the session; cleanup is handled by isolate_test_tables
+            await session.close()
