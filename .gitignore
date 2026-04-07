@@ -69,6 +69,8 @@ datasets/
 
 # Models / embeddings / checkpoints
 models/
+!backend/app/models/
+!backend/app/models/*.py
 checkpoints/
 artifacts/
 wandb/
