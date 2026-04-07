@@ -75,10 +75,10 @@ def _setup_database_schema():
     conn.autocommit = True
     cur = conn.cursor()
 
-    # Drop tables in reverse dependency order
-    cur.execute("DROP TABLE IF EXISTS processed_posts CASCADE")
-    cur.execute("DROP TABLE IF EXISTS raw_posts CASCADE")
-    cur.execute("DROP TABLE IF EXISTS ingestion_jobs CASCADE")
+    # Avoid setup flakiness from managed DB statement timeouts on DROP ... CASCADE.
+    # We only need idempotent schema creation plus data cleanup for tests.
+    cur.execute("SET statement_timeout = 0")
+    cur.execute("SET lock_timeout = 0")
 
     # Create tables with TEXT type instead of VECTOR for testing
     cur.execute(
@@ -134,6 +134,11 @@ def _setup_database_schema():
             UNIQUE(raw_post_id)
         )
     """
+    )
+
+    # Ensure a clean test slate without destructive DDL.
+    cur.execute(
+        "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
     )
 
     cur.close()
