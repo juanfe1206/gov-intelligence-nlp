@@ -39,8 +39,7 @@ os.environ.setdefault("TAXONOMY_PATH", str(backend_root / "config" / "taxonomy.y
 import pytest
 import pytest_asyncio
 from fastapi.testclient import TestClient
-from sqlalchemy import text
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.main import app
 from app.taxonomy.loader import load_taxonomy
@@ -170,69 +169,68 @@ def _setup_database_schema():
     conn.close()
 
 
-@pytest_asyncio.fixture(scope="session", loop_scope="session")
-async def async_engine():
-    """Provide the async engine for DB-backed test fixtures."""
-    # Initialize schema only when DB-backed fixtures are requested.
-    # This prevents non-DB unit tests from hanging on database connectivity.
-    _setup_database_schema()
-    from app.db.session import engine
+def _truncate_test_tables():
+    """Synchronously truncate test tables with short lock/statement timeouts."""
+    import psycopg2
 
-    yield engine
-    await engine.dispose()
+    sync_url = os.environ.get(
+        "DATABASE_SYNC_URL",
+        "postgresql://postgres:postgres@localhost:5432/gov_intelligence_nlp_test",
+    )
+    conn = psycopg2.connect(
+        sync_url,
+        connect_timeout=10,
+        application_name="pytest_table_truncate",
+        options="-c statement_timeout=30000 -c lock_timeout=5000",
+    )
+    conn.autocommit = True
+    cur = conn.cursor()
+    cur.execute(
+        "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
+    )
+    cur.close()
+    conn.close()
 
 
-@pytest_asyncio.fixture(autouse=True, loop_scope="function")
-async def isolate_test_tables(request):
+@pytest.fixture(autouse=True)
+def isolate_test_tables(request):
     """Ensure core tables are clean before and after every test.
 
-    Uses TRUNCATE with engine-level connections for proper isolation.
+    Uses synchronous TRUNCATE to avoid async event-loop fixture conflicts.
     """
     needs_db = "async_db_session" in request.fixturenames or "client" in request.fixturenames
     if not needs_db:
         yield
         return
 
-    async_engine = request.getfixturevalue("async_engine")
-
-    # Truncate before test
-    async with async_engine.begin() as conn:
-        await conn.execute(text("SET LOCAL statement_timeout = '30s'"))
-        await conn.execute(text("SET LOCAL lock_timeout = '5s'"))
-        await conn.execute(
-            text(
-                "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
-            )
-        )
+    _setup_database_schema()
+    _truncate_test_tables()
 
     yield
 
-    # Truncate after test
-    async with async_engine.begin() as conn:
-        await conn.execute(text("SET LOCAL statement_timeout = '30s'"))
-        await conn.execute(text("SET LOCAL lock_timeout = '5s'"))
-        await conn.execute(
-            text(
-                "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
-            )
-        )
+    _truncate_test_tables()
 
 
 @pytest_asyncio.fixture(loop_scope="function")
-async def async_db_session(async_engine):
+async def async_db_session():
     """Create an async database session for tests.
 
     This fixture provides a fresh async session for each test function.
     The session is properly closed after use, with cleanup handled by isolate_test_tables.
     """
-    session_maker = async_sessionmaker(
-        async_engine,
-        class_=AsyncSession,
-        expire_on_commit=False,
-    )
+    from app.db.session import async_session_maker
 
-    async with session_maker() as session:
+    async with async_session_maker() as session:
         try:
             yield session
         finally:
             await session.close()
+
+
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
+async def dispose_async_engine():
+    """Dispose global async engine at session end."""
+    yield
+    from app.db.session import engine
+
+    await engine.dispose()
