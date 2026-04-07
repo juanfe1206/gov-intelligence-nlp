@@ -125,7 +125,11 @@ def _setup_database_schema():
     cur.execute("SET statement_timeout = 0")
     cur.execute("SET lock_timeout = 0")
 
-    # Create tables with TEXT type instead of VECTOR for testing
+    # Ensure required extensions for schema defaults and vector support.
+    cur.execute('CREATE EXTENSION IF NOT EXISTS "pgcrypto"')
+    cur.execute('CREATE EXTENSION IF NOT EXISTS "vector"')
+
+    # Create test tables aligned with application schema.
     cur.execute(
         """
         CREATE TABLE IF NOT EXISTS ingestion_jobs (
@@ -171,7 +175,7 @@ def _setup_database_schema():
             sentiment VARCHAR(20) NOT NULL,
             target VARCHAR(255),
             intensity FLOAT,
-            embedding TEXT,
+            embedding VECTOR(1536),
             processed_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             model_version VARCHAR(50),
             error_status BOOLEAN DEFAULT FALSE,
