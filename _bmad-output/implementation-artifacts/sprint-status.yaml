@@ -50,7 +50,7 @@ development_status:
   1-4-csv-data-ingestion: done
   1-5-nlp-classification-pipeline: done
   1-6-ingestion-job-status-tracking-api: done
-  epic-1-retrospective: optional
+  epic-1-retrospective: done
 
   # Epic 2: Analytics Dashboard & Data Exploration
   epic-2: backlog
