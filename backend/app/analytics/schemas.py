@@ -31,3 +31,9 @@ class SentimentResponse(BaseModel):
     """Response for sentiment analytics endpoint."""
 
     data: list[DailySentiment]
+
+
+class PlatformsResponse(BaseModel):
+    """Response for available platforms endpoint."""
+
+    platforms: list[str]

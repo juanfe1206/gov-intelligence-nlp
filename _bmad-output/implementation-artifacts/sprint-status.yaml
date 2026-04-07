@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-06
-last_updated: 2026-04-07
+last_updated: 2026-04-08
 project: gov-intelligence-nlp
 project_key: NOKEY
 tracking_system: file-system
@@ -56,7 +56,7 @@ development_status:
   epic-2: in-progress
   2-1-frontend-shell-layout-design-system-setup: done
   2-2-post-volume-sentiment-over-time-charts: done
-  2-3-dashboard-filter-controls: backlog
+  2-3-dashboard-filter-controls: done
   2-4-topic-distribution-trending-topics-panel: backlog
   2-5-representative-posts-panel-evidence-post-cards: backlog
   2-6-cross-party-sentiment-comparison: backlog

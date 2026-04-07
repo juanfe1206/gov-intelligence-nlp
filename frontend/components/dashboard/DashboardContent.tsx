@@ -3,22 +3,9 @@
 import { useEffect, useState } from 'react'
 import VolumeChart from '@/components/charts/VolumeChart'
 import SentimentChart from '@/components/charts/SentimentChart'
+import FilterBar, { FilterState, getDefaultDates } from './FilterBar'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
-
-// Default: last 7 days
-function getDefaultDates() {
-  const end = new Date()
-  const start = new Date()
-  start.setDate(end.getDate() - 6)
-  const fmt = (d: Date) => {
-    const year = d.getFullYear()
-    const month = String(d.getMonth() + 1).padStart(2, '0')
-    const day = String(d.getDate()).padStart(2, '0')
-    return `${year}-${month}-${day}`
-  }
-  return { startDate: fmt(start), endDate: fmt(end) }
-}
 
 // Type definitions
 interface VolumeData {
@@ -31,34 +18,62 @@ interface SentimentData {
 }
 
 export default function DashboardContent() {
-  const { startDate, endDate } = getDefaultDates()
+  const defaultDates = getDefaultDates(7)
+  const [filters, setFilters] = useState<FilterState>({
+    topic: '',
+    subtopic: '',
+    target: '',
+    platform: '',
+    startDate: defaultDates.startDate,
+    endDate: defaultDates.endDate,
+  })
   const [volumeData, setVolumeData] = useState<VolumeData | null>(null)
   const [sentimentData, setSentimentData] = useState<SentimentData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    const controller = new AbortController()
+    let isActive = true
+
     async function fetchData() {
       setLoading(true)
       setError(null)
       try {
-        const params = `start_date=${startDate}&end_date=${endDate}`
+        const params = new URLSearchParams({
+          start_date: filters.startDate,
+          end_date: filters.endDate,
+        })
+        if (filters.topic) params.set('topic', filters.topic)
+        if (filters.subtopic) params.set('subtopic', filters.subtopic)
+        if (filters.target) params.set('target', filters.target)
+        if (filters.platform) params.set('platform', filters.platform)
+
         const [volRes, sentRes] = await Promise.all([
-          fetch(`${API_BASE}/analytics/volume?${params}`),
-          fetch(`${API_BASE}/analytics/sentiment?${params}`),
+          fetch(`${API_BASE}/analytics/volume?${params.toString()}`, { signal: controller.signal }),
+          fetch(`${API_BASE}/analytics/sentiment?${params.toString()}`, { signal: controller.signal }),
         ])
         if (!volRes.ok || !sentRes.ok) throw new Error('Failed to fetch analytics data')
         const [vol, sent] = await Promise.all([volRes.json(), sentRes.json()])
+        if (!isActive) return
         setVolumeData(vol)
         setSentimentData(sent)
-      } catch (_e) {
+      } catch (error) {
+        if ((error as Error).name === 'AbortError') return
+        if (!isActive) return
         setError('Unable to load analytics data. Check that the backend is running.')
       } finally {
+        if (!isActive) return
         setLoading(false)
       }
     }
     fetchData()
-  }, [startDate, endDate])
+
+    return () => {
+      isActive = false
+      controller.abort()
+    }
+  }, [filters])
 
   if (loading) {
     return (
@@ -77,25 +92,33 @@ export default function DashboardContent() {
   }
 
   const isEmpty = !volumeData?.data?.length && !sentimentData?.data?.length
+  const hasFilters = filters.topic || filters.subtopic || filters.target || filters.platform
 
   if (isEmpty) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">
-          No data available for the selected period. Try adjusting the time range.
-        </p>
-      </div>
+      <>
+        <FilterBar filters={filters} onChange={setFilters} />
+        <div className="col-span-12">
+          <p className="text-muted [font-size:var(--font-size-body)]">
+            {hasFilters
+              ? 'No data for this filter combination. Try broadening your filters.'
+              : 'No data available for the selected period. Try adjusting the time range.'}
+          </p>
+        </div>
+      </>
     )
   }
 
   return (
     <>
+      <FilterBar filters={filters} onChange={setFilters} />
+
       <div className="col-span-12">
         <h2 className="text-foreground font-semibold [font-size:var(--font-size-h2)] [line-height:var(--line-height-h2)]">
           Dashboard
         </h2>
         <p className="mt-1 text-muted [font-size:var(--font-size-small)]">
-          Last 7 days · {startDate} – {endDate}
+          {filters.startDate} – {filters.endDate}
         </p>
       </div>
 

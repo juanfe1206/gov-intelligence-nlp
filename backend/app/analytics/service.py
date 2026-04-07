@@ -15,27 +15,40 @@ async def get_volume(
     session: AsyncSession,
     start_date: date,
     end_date: date,
+    topic: str | None = None,
+    subtopic: str | None = None,
+    target: str | None = None,
+    platform: str | None = None,
 ) -> VolumeResponse:
     """Get daily post volume for a date range.
 
     Joins processed_posts with raw_posts to get the created_at date dimension.
     Filters out posts with error_status=True.
+    Optional filters: topic, subtopic, target, platform.
     """
     date_col = cast(RawPost.created_at, Date)
+    filters = [
+        date_col >= start_date,
+        date_col <= end_date,
+        or_(
+            ProcessedPost.error_status.is_(False),
+            ProcessedPost.error_status.is_(None),
+        ),
+    ]
+    if topic is not None:
+        filters.append(ProcessedPost.topic == topic)
+    if subtopic is not None:
+        filters.append(ProcessedPost.subtopic == subtopic)
+    if target is not None:
+        filters.append(ProcessedPost.target == target)
+    if platform is not None:
+        filters.append(RawPost.platform == platform)
+
     stmt = (
         select(date_col.label("day"), func.count().label("count"))
         .select_from(ProcessedPost)
         .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
-        .where(
-            and_(
-                date_col >= start_date,
-                date_col <= end_date,
-                or_(
-                    ProcessedPost.error_status.is_(False),
-                    ProcessedPost.error_status.is_(None),
-                ),
-            )
-        )
+        .where(and_(*filters))
         .group_by(date_col)
         .order_by(date_col)
     )
@@ -58,14 +71,36 @@ async def get_sentiment(
     session: AsyncSession,
     start_date: date,
     end_date: date,
+    topic: str | None = None,
+    subtopic: str | None = None,
+    target: str | None = None,
+    platform: str | None = None,
 ) -> SentimentResponse:
     """Get daily sentiment breakdown for a date range.
 
     Joins processed_posts with raw_posts to get the created_at date dimension.
     Filters out posts with error_status=True.
     Aggregates counts by date and sentiment (positive/neutral/negative).
+    Optional filters: topic, subtopic, target, platform.
     """
     date_col = cast(RawPost.created_at, Date)
+    filters = [
+        date_col >= start_date,
+        date_col <= end_date,
+        or_(
+            ProcessedPost.error_status.is_(False),
+            ProcessedPost.error_status.is_(None),
+        ),
+    ]
+    if topic is not None:
+        filters.append(ProcessedPost.topic == topic)
+    if subtopic is not None:
+        filters.append(ProcessedPost.subtopic == subtopic)
+    if target is not None:
+        filters.append(ProcessedPost.target == target)
+    if platform is not None:
+        filters.append(RawPost.platform == platform)
+
     stmt = (
         select(
             date_col.label("day"),
@@ -74,16 +109,7 @@ async def get_sentiment(
         )
         .select_from(ProcessedPost)
         .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
-        .where(
-            and_(
-                date_col >= start_date,
-                date_col <= end_date,
-                or_(
-                    ProcessedPost.error_status.is_(False),
-                    ProcessedPost.error_status.is_(None),
-                ),
-            )
-        )
+        .where(and_(*filters))
         .group_by(date_col, ProcessedPost.sentiment)
         .order_by(date_col)
     )
