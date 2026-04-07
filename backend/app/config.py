@@ -13,6 +13,7 @@ class Settings(BaseSettings):
 
     # Required
     DATABASE_URL: str
+    DATABASE_SYNC_URL: str
     OPENAI_API_KEY: str
 
     # Optional with defaults
@@ -27,6 +28,9 @@ class Settings(BaseSettings):
 
     # CORS configuration
     CORS_ALLOW_ORIGINS: str = "http://localhost:3000"
+
+    # Taxonomy configuration
+    TAXONOMY_PATH: str = "config/taxonomy.yaml"
 
     def get_cors_origins(self) -> list[str]:
         """Parse CORS origins from comma-separated string.

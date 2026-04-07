@@ -1,0 +1,78 @@
+# Political Taxonomy Configuration for Spanish Political Intelligence Platform
+# This file defines the topics, subtopics, and political targets used for
+# NLP classification of social media posts and news articles.
+
+# Topics and Subtopics
+# Machine identifiers (name fields) use snake_case, no spaces
+# Display labels support UTF-8 characters for proper Spanish rendering
+topics:
+  - name: "vivienda"
+    label: "Vivienda"
+    subtopics:
+      - name: "alquiler"
+        label: "Alquiler"
+      - name: "hipotecas"
+        label: "Hipotecas"
+      - name: "desahucios"
+        label: "Desahucios y Okupación"
+
+  - name: "sanidad"
+    label: "Sanidad"
+    subtopics:
+      - name: "atencion_primaria"
+        label: "Atención Primaria"
+      - name: "listas_espera"
+        label: "Listas de Espera"
+      - name: "farmacia"
+        label: "Farmacia y Medicamentos"
+
+  - name: "economia"
+    label: "Economía"
+    subtopics:
+      - name: "inflacion"
+        label: "Inflación y Precios"
+      - name: "desempleo"
+        label: "Desempleo y Empleo"
+      - name: "impuestos"
+        label: "Impuestos y Fiscalidad"
+
+  - name: "educacion"
+    label: "Educación"
+    subtopics:
+      - name: "universidad"
+        label: "Universidad"
+      - name: "fp"
+        label: "Formación Profesional"
+      - name: "concertada"
+        label: "Escuela Concertada"
+
+# Political Targets
+# Parties and leaders that can be mentioned in posts
+targets:
+  parties:
+    - name: "pp"
+      label: "Partido Popular"
+    - name: "psoe"
+      label: "PSOE"
+    - name: "vox"
+      label: "VOX"
+    - name: "sumar"
+      label: "Sumar"
+    - name: "erc"
+      label: "Esquerra Republicana"
+    - name: "junts"
+      label: "Junts"
+
+  leaders:
+    - name: "sanchez"
+      label: "Pedro Sánchez"
+    - name: "feijoo"
+      label: "Alberto Núñez Feijóo"
+    - name: "abascal"
+      label: "Santiago Abascal"
+    - name: "diaz"
+      label: "Yolanda Díaz"
+    - name: "rufian"
+      label: "Gabriel Rufián"
+    - name: "tardà"
+      label: "Francesc de Paula Mas i Tardà"
