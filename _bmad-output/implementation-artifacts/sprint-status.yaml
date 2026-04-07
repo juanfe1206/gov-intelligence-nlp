@@ -48,7 +48,7 @@ development_status:
   1-2-database-schema-migration-setup: done
   1-3-political-taxonomy-configuration: done
   1-4-csv-data-ingestion: done
-  1-5-nlp-classification-pipeline: backlog
+  1-5-nlp-classification-pipeline: review
   1-6-ingestion-job-status-tracking-api: backlog
   epic-1-retrospective: optional
 

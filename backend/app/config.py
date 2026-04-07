@@ -1,6 +1,7 @@
 """Application configuration with environment variable validation."""
 
 import os
+from pydantic import ConfigDict
 from pydantic_settings import BaseSettings
 
 
@@ -37,6 +38,12 @@ class Settings(BaseSettings):
     INGESTION_SOURCE_NAME: str = "csv_local"
     INGESTION_PLATFORM_DEFAULT: str = ""
 
+    # Processing configuration
+    OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    PROCESSING_BATCH_SIZE: int = 50
+    PROCESSING_MAX_RETRIES: int = 3
+
     def get_cors_origins(self) -> list[str]:
         """Parse CORS origins from comma-separated string.
 
@@ -53,9 +60,11 @@ class Settings(BaseSettings):
 
         return origins
 
-    class Config:
-        env_file = ".env"
-        case_sensitive = True
+    model_config = ConfigDict(
+        env_file=".env",
+        case_sensitive=True,
+        extra="ignore",
+    )
 
 
 # Global settings instance - created at import time to fail fast

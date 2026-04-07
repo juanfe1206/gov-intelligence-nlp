@@ -3,6 +3,7 @@
 .env.local
 .env.*.local
 !.env.example
+.env.test
 
 # Node / React frontend
 frontend/node_modules/

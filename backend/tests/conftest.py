@@ -28,7 +28,11 @@ else:
         "test-key-for-ci",
     )
 
+# Ensure startup taxonomy file resolves from repo root test runs.
+os.environ.setdefault("TAXONOMY_PATH", str(backend_root / "config" / "taxonomy.yaml"))
+
 import pytest
+import pytest_asyncio
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
@@ -54,7 +58,35 @@ def sample_taxonomy() -> TaxonomyConfig:
     return load_taxonomy(Path(__file__).parent.parent / "config/taxonomy.yaml")
 
 
-@pytest.fixture
+@pytest_asyncio.fixture(scope="session", autouse=True)
+async def ensure_test_schema_current():
+    """Recreate test tables from current ORM models once per test session."""
+    from app.db.base import Base
+    from app.db.session import engine
+    from app import models  # noqa: F401 - ensure model metadata is registered
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+
+@pytest_asyncio.fixture(autouse=True)
+async def isolate_test_tables():
+    """Ensure core tables are clean before and after every test."""
+    from app.db.session import async_session_maker
+
+    async with async_session_maker() as session:
+        await session.execute(text("TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"))
+        await session.commit()
+
+    yield
+
+    async with async_session_maker() as session:
+        await session.execute(text("TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"))
+        await session.commit()
+
+
+@pytest_asyncio.fixture
 async def async_db_session():
     """Create an async database session for tests.
 
@@ -67,5 +99,5 @@ async def async_db_session():
         yield session
         await session.rollback()
         # Clean up committed test data to avoid cross-test contamination.
-        await session.execute(text("TRUNCATE TABLE ingestion_jobs, raw_posts RESTART IDENTITY CASCADE"))
+        await session.execute(text("TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"))
         await session.commit()

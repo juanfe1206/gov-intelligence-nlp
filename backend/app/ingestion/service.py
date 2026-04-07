@@ -1,12 +1,15 @@
 """CSV ingestion service for loading raw posts into the database."""
 
 import csv
+import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy import text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
+from sqlalchemy.exc import ProgrammingError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
@@ -50,7 +53,7 @@ async def ingest_csv(
             logger.error(error_msg)
             summary.errors.append(error_msg)
             summary.finished_at = datetime.now(timezone.utc)
-            await _persist_job(session, summary)
+            await _persist_job(summary)
             return summary
 
         rows = await _read_csv_rows(file_path, summary)
@@ -66,7 +69,7 @@ async def ingest_csv(
         summary.finished_at = datetime.now(timezone.utc)
         await session.rollback()
 
-    await _persist_job(session, summary)
+    await _persist_job(summary)
     return summary
 
 
@@ -148,55 +151,77 @@ async def _insert_rows(
         text = row_data["text"]
         content_hash = compute_content_hash(text)
 
-        try:
-            async with session.begin_nested():
-                stmt = (
-                    pg_insert(RawPost)
-                    .values(
-                        source=source_name,
-                        platform=row_data["platform"],
-                        original_text=text,
-                        content_hash=content_hash,
-                        author=row_data["author"],
-                        created_at=row_data["created_at"],
-                        metadata=row_data["metadata"] if row_data["metadata"] else None,
-                    )
-                    .on_conflict_do_nothing(
-                        index_elements=["source", "content_hash"],
-                    )
-                    .returning(RawPost.id)
-                )
-                result = await session.execute(stmt)
-            if result.scalar_one_or_none():
-                summary.inserted += 1
-            else:
-                summary.duplicates += 1
-        except Exception as e:
-            summary.skipped += 1
-            summary.errors.append(f"Row {row_data['row_num']}: insert error - {str(e)}")
-            logger.error(f"Failed to insert row: {e}")
+        stmt = (
+            pg_insert(RawPost)
+            .values(
+                source=source_name,
+                platform=row_data["platform"],
+                original_text=text,
+                content_hash=content_hash,
+                author=row_data["author"],
+                created_at=row_data["created_at"],
+                metadata_=row_data["metadata"] if row_data["metadata"] else None,
+            )
+            .on_conflict_do_nothing(
+                index_elements=["source", "content_hash"],
+            )
+            .returning(RawPost.id)
+        )
+        result = await session.execute(stmt)
+        if result.scalar_one_or_none():
+            summary.inserted += 1
+        else:
+            summary.duplicates += 1
 
     await session.commit()
 
 
-async def _persist_job(
-    session: AsyncSession,
-    summary: IngestionSummary,
-) -> None:
+async def _persist_job(summary: IngestionSummary) -> None:
     """Persist ingestion job record to database."""
-    job = IngestionJob(
-        source=summary.source,
-        status=summary.status,
-        started_at=summary.started_at,
-        finished_at=summary.finished_at,
-        row_count=summary.processed,
-        inserted_count=summary.inserted,
-        skipped_count=summary.skipped,
-        duplicate_count=summary.duplicates,
-        error_summary=summary.errors if summary.errors else None,
-    )
-    session.add(job)
-    await session.commit()
+    from app.db.session import async_session_maker
+
+    async with async_session_maker() as session:
+        job = IngestionJob(
+            source=summary.source,
+            status=summary.status,
+            started_at=summary.started_at,
+            finished_at=summary.finished_at,
+            row_count=summary.processed,
+            inserted_count=summary.inserted,
+            skipped_count=summary.skipped,
+            duplicate_count=summary.duplicates,
+            error_summary=summary.errors if summary.errors else None,
+        )
+        session.add(job)
+        try:
+            await session.commit()
+        except ProgrammingError as exc:
+            await session.rollback()
+            # Backward compatibility for DBs that haven't applied the job_type migration yet.
+            if "job_type" not in str(exc).lower():
+                raise
+            await session.execute(
+                text(
+                    """
+                    INSERT INTO ingestion_jobs
+                    (source, status, started_at, finished_at, row_count, inserted_count, skipped_count, duplicate_count, error_summary)
+                    VALUES
+                    (:source, :status, :started_at, :finished_at, :row_count, :inserted_count, :skipped_count, :duplicate_count, :error_summary)
+                    """
+                ),
+                {
+                    "source": summary.source,
+                    "status": summary.status,
+                    "started_at": summary.started_at,
+                    "finished_at": summary.finished_at,
+                    "row_count": summary.processed,
+                    "inserted_count": summary.inserted,
+                    "skipped_count": summary.skipped,
+                    "duplicate_count": summary.duplicates,
+                    "error_summary": json.dumps(summary.errors) if summary.errors else None,
+                },
+            )
+            await session.commit()
 
 
 def _parse_timestamp(value: str) -> datetime:

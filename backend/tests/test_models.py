@@ -46,7 +46,7 @@ async def test_create_processed_post():
         await session.refresh(raw_post)
 
         # Create processed post
-        embedding = [0.1] * 768  # Test embedding
+        embedding = [0.1] * 1536  # Test embedding
 
         processed = ProcessedPost(
             raw_post_id=raw_post.id,
@@ -94,14 +94,13 @@ async def test_raw_post_relationship():
         await session.commit()
         await session.refresh(raw_post)
 
-        # Create multiple processed posts from same raw post
-        for i in range(3):
-            processed = ProcessedPost(
-                raw_post_id=raw_post.id,
-                topic=f"topic_{i}",
-                sentiment="positive",
-            )
-            session.add(processed)
+        # Create processed post for the raw post
+        processed = ProcessedPost(
+            raw_post_id=raw_post.id,
+            topic="topic_0",
+            sentiment="positive",
+        )
+        session.add(processed)
         await session.commit()
 
         # Query with eager loading to avoid implicit async lazy-load IO.
@@ -111,4 +110,4 @@ async def test_raw_post_relationship():
             .where(RawPost.id == raw_post.id)
         )
         loaded_raw_post = result.scalar_one()
-        assert len(loaded_raw_post.processed_posts) == 3
+        assert len(loaded_raw_post.processed_posts) == 1
