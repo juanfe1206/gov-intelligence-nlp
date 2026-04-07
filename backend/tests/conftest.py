@@ -58,7 +58,7 @@ def sample_taxonomy() -> TaxonomyConfig:
     return load_taxonomy(Path(__file__).parent.parent / "config/taxonomy.yaml")
 
 
-@pytest_asyncio.fixture(scope="session", autouse=True)
+@pytest_asyncio.fixture(scope="session", autouse=True, loop_scope="session")
 async def ensure_test_schema_current():
     """Recreate test tables from current ORM models once per test session."""
     from app.db.base import Base
@@ -72,7 +72,7 @@ async def ensure_test_schema_current():
         await conn.run_sync(Base.metadata.create_all)
 
 
-@pytest_asyncio.fixture(autouse=True)
+@pytest_asyncio.fixture(autouse=True, loop_scope="session")
 async def isolate_test_tables():
     """Ensure core tables are clean before and after every test."""
     from app.db.session import async_session_maker
@@ -88,7 +88,7 @@ async def isolate_test_tables():
         await session.commit()
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(loop_scope="session")
 async def async_db_session():
     """Create an async database session for tests.
 
