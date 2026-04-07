@@ -61,7 +61,13 @@ def pytest_collection_modifyitems(config, items):
     skip_db = pytest.mark.skip(reason="DB tests disabled. Set RUN_DB_TESTS=1 to enable.")
 
     for item in items:
-        needs_db = "async_db_session" in item.fixturenames or "client" in item.fixturenames
+        needs_db_fixture = "async_db_session" in item.fixturenames or "client" in item.fixturenames
+        uses_session_maker_directly = False
+        test_func = getattr(item, "function", None)
+        if test_func is not None and hasattr(test_func, "__code__"):
+            uses_session_maker_directly = "async_session_maker" in test_func.__code__.co_names
+
+        needs_db = needs_db_fixture or uses_session_maker_directly
         if needs_db:
             item.add_marker(pytest.mark.db)
             if not run_db_tests:
