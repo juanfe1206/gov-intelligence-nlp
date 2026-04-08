@@ -110,6 +110,53 @@ function sentimentStyles(sentiment: string) {
   }
 }
 
+function formatDateString(isoDate: string): string {
+  const date = new Date(isoDate + 'T00:00:00')
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+function buildEmptyStateMessage(filters: QAResponse['filters_applied'] | undefined): {
+  reason: string
+  suggestion: string
+} {
+  if (!filters) {
+    return { reason: 'No posts found for this question.', suggestion: 'Try broadening your question.' }
+  }
+
+  const parts: string[] = []
+  if (filters.topic) parts.push(`for this topic`)
+  if (filters.subtopic) parts.push(`with this subtopic`)
+  if (filters.party) parts.push(`from ${filters.party}`)
+  if (filters.platform) parts.push(`on ${filters.platform}`)
+  if (filters.start_date && filters.end_date) {
+    parts.push(`between ${formatDateString(filters.start_date)} and ${formatDateString(filters.end_date)}`)
+  } else if (filters.start_date) {
+    parts.push(`from ${formatDateString(filters.start_date)}`)
+  } else if (filters.end_date) {
+    parts.push(`up to ${formatDateString(filters.end_date)}`)
+  }
+
+  const reason = parts.length > 0
+    ? `No posts found ${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`
+    : 'No posts found for this question.'
+
+  // Suggest relaxing the most specific active filter first
+  let suggestion = 'Try broadening your question.'
+  if (filters.subtopic) {
+    suggestion = 'Try removing the subtopic filter.'
+  } else if (filters.start_date || filters.end_date) {
+    suggestion = 'Try a wider time range.'
+  } else if (filters.party) {
+    suggestion = 'Try removing the party filter.'
+  } else if (filters.platform) {
+    suggestion = 'Try removing the platform filter.'
+  } else if (filters.topic) {
+    suggestion = 'Try removing the topic filter or asking a broader question.'
+  }
+
+  return { reason, suggestion }
+}
+
 function EvidencePostCard({ post }: { post: QAPostItem }) {
   return (
     <div className="rounded border border-border bg-surface p-4 flex flex-col gap-2">
@@ -342,8 +389,19 @@ export default function QAContent() {
 
     if (error) {
       return (
-        <div className="col-span-12">
-          <p className="text-sentiment-negative [font-size:var(--font-size-body)]">{error}</p>
+        <div className="col-span-12 flex flex-col gap-3">
+          <p className="text-sentiment-negative [font-size:var(--font-size-body)]">
+            Something went wrong — please try again.
+          </p>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={loading}
+            aria-label="Retry the question"
+            className="self-start px-3 py-1.5 rounded border border-border bg-surface text-foreground hover:bg-surface-raised [font-size:var(--font-size-small)] disabled:opacity-50"
+          >
+            Retry
+          </button>
         </div>
       )
     }
@@ -353,11 +411,11 @@ export default function QAContent() {
     }
 
     if (result.insufficient_data) {
+      const { reason, suggestion } = buildEmptyStateMessage(result.filters_applied)
       return (
-        <div className="col-span-12">
-          <p className="text-muted [font-size:var(--font-size-body)]">
-            Not enough data to answer this question. Try a broader question.
-          </p>
+        <div className="col-span-12 flex flex-col gap-2">
+          <p className="text-muted [font-size:var(--font-size-body)]">{reason}</p>
+          <p className="text-muted [font-size:var(--font-size-small)]">{suggestion}</p>
         </div>
       )
     }

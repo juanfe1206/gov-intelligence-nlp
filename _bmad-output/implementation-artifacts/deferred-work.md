@@ -40,3 +40,9 @@
 
 - Silent taxonomy/platform fetch failure (`.catch(() => {})`) — spec-compliant and mirrors FilterBar pattern; consider adding console.warn or user-facing fallback in future polish pass
 - `hasActiveFilters` redundant in useCallback deps (derived from `qaFilters` already in deps) — spec-mandated, harmless; can remove in a refactor pass
+
+## Deferred from: code review of 3-6-qa-resilience-error-states-demo-readiness (2026-04-08)
+
+- Retry button styling deviates from spec — current style is intentionally more prominent but doesn't match "Clear filters" exactly; will revisit styling holistically at end of dev using external tool UIs as design inspiration
+- Suggestion shows only one action even when multiple filters are active — currently suggests removing only the most specific filter; AC3 example shows combined suggestion but implementation follows priority order; UX enhancement beyond current spec
+- No loading text change on Retry button — label stays "Retry" during loading; common pattern is "Retrying…" but not specified in AC; nice-to-have UX improvement
