@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { getDefaultDates } from '@/components/dashboard/FilterBar'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
@@ -37,6 +38,13 @@ interface QAMetrics {
   top_subtopics: Array<{ subtopic: string; subtopic_label: string; count: number }>
 }
 
+interface NarrativeCluster {
+  label: string
+  sentiment: string               // "positive" | "neutral" | "negative"
+  post_count: number
+  representative_posts: QAPostItem[]   // up to 2 items
+}
+
 interface QAResponse {
   question: string
   filters_applied: {
@@ -52,6 +60,7 @@ interface QAResponse {
   insufficient_data: boolean
   summary: string | null
   answer_error: string | null
+  clusters: NarrativeCluster[]    // 2-4 items, or empty when insufficient_data
 }
 
 // Taxonomy types for filter panel
@@ -157,6 +166,40 @@ function MetricsStrip({ metrics }: { metrics: QAMetrics }) {
   )
 }
 
+function NarrativeClusterCard({ cluster }: { cluster: NarrativeCluster }) {
+  return (
+    <div className="rounded border border-border bg-surface p-4 flex flex-col gap-3">
+      {/* Header: label + sentiment tag + post count */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className="font-medium text-foreground [font-size:var(--font-size-body)]">
+          {cluster.label}
+        </span>
+        <div className="flex items-center gap-2">
+          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${sentimentStyles(cluster.sentiment)}`}>
+            {cluster.sentiment}
+          </span>
+          <span className="text-muted [font-size:var(--font-size-small)]">
+            {cluster.post_count.toLocaleString()} posts
+          </span>
+        </div>
+      </div>
+      {/* Representative quotes */}
+      {cluster.representative_posts.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {cluster.representative_posts.map((post) => (
+            <blockquote
+              key={post.id}
+              className="border-l-2 border-border pl-3 text-muted [font-size:var(--font-size-small)] [line-height:var(--line-height-body)] line-clamp-2"
+            >
+              {post.original_text}
+            </blockquote>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function QAContent() {
   const [question, setQuestion] = useState('')
   const [loading, setLoading] = useState(false)
@@ -169,6 +212,8 @@ export default function QAContent() {
   const [qaFilters, setQAFilters] = useState<QAFilterState>(DEFAULT_FILTERS)
   const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null)
   const [platforms, setPlatforms] = useState<string[]>([])
+
+  const searchParams = useSearchParams()
 
   // Compute if any filter is active
   const hasActiveFilters =
@@ -193,6 +238,17 @@ export default function QAContent() {
         // Silently fail — filter options will be empty
       })
   }, [])
+
+  // Apply URL params on mount and when they change (from SpikeAlertBanner or TopicsPanel navigation)
+  useEffect(() => {
+    const questionParam = searchParams.get('question')
+    const topicParam = searchParams.get('topic')
+    if (questionParam) setQuestion(questionParam)
+    if (topicParam) {
+      setQAFilters((f) => ({ ...f, topic: topicParam }))
+      setFilterOpen(true)   // open filter panel so user sees the pre-set topic
+    }
+  }, [searchParams])
 
   // Cleanup: abort any in-flight request on unmount
   useEffect(() => {
@@ -343,6 +399,20 @@ export default function QAContent() {
             <div className="grid grid-cols-1 gap-4">
               {result.retrieved_posts.slice(0, 5).map((post) => (
                 <EvidencePostCard key={post.id} post={post} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Narrative Clusters — only show when there are at least 2 distinct clusters */}
+        {result.clusters.length >= 2 && (
+          <div className="flex flex-col gap-3">
+            <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">
+              Narrative Clusters
+            </h3>
+            <div className="grid grid-cols-1 gap-4">
+              {result.clusters.slice(0, 4).map((cluster, i) => (
+                <NarrativeClusterCard key={`${cluster.label}-${i}`} cluster={cluster} />
               ))}
             </div>
           </div>

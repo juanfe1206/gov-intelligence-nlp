@@ -1,7 +1,7 @@
 """Q&A retrieval and aggregation service."""
 
 import logging
-from collections import defaultdict
+from collections import Counter, defaultdict
 from datetime import date
 
 from sqlalchemy import and_, cast, Date, or_, select
@@ -11,6 +11,7 @@ from app.models.processed_post import ProcessedPost
 from app.models.raw_post import RawPost
 from app.processing.embeddings import generate_single_embedding
 from app.qa.schemas import (
+    NarrativeCluster,
     QAFilters,
     QAMetrics,
     QAPostItem,
@@ -141,6 +142,27 @@ async def retrieve_and_aggregate(
             )
         )
 
+    # Step 5b: group posts into narrative clusters by subtopic (fallback to topic)
+    cluster_groups: dict[str, list[QAPostItem]] = defaultdict(list)
+    for post in retrieved_posts:
+        key = post.subtopic or post.topic  # subtopic preferred; fall back to topic
+        cluster_groups[key].append(post)
+
+    clusters: list[NarrativeCluster] = []
+    for key, posts in sorted(cluster_groups.items(), key=lambda x: len(x[1]), reverse=True)[:4]:
+        dominant_sentiment = Counter(p.sentiment for p in posts).most_common(1)[0][0]
+        first = posts[0]
+        # Label must match what the group was keyed on: subtopic_label if keyed by subtopic, else topic_label
+        cluster_label = (first.subtopic_label or key) if first.subtopic else (first.topic_label or key)
+        clusters.append(
+            NarrativeCluster(
+                label=cluster_label,
+                sentiment=dominant_sentiment,
+                post_count=len(posts),
+                representative_posts=posts[:2],
+            )
+        )
+
     # Step 6: build top subtopics
     top_subtopics = []
     all_topic_subtopic_labels: dict[str, str] = {}
@@ -169,6 +191,7 @@ async def retrieve_and_aggregate(
         retrieved_posts=retrieved_posts,
         metrics=metrics,
         insufficient_data=False,
+        clusters=clusters,
     )
 
 

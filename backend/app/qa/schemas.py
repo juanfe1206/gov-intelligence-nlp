@@ -46,6 +46,14 @@ class QASubtopicSummary(BaseModel):
     count: int
 
 
+class NarrativeCluster(BaseModel):
+    """A group of thematically related posts representing a single narrative thread."""
+    label: str                                  # subtopic_label, or topic_label if no subtopic
+    sentiment: str                              # dominant sentiment: "positive" | "neutral" | "negative"
+    post_count: int
+    representative_posts: list[QAPostItem]      # up to 2 posts (most similar / top of cluster)
+
+
 class QAMetrics(BaseModel):
     """Aggregated metrics from the retrieved post set."""
     total_retrieved: int
@@ -64,3 +72,4 @@ class QAResponse(BaseModel):
     insufficient_data: bool    # True when no posts matched filters/question
     summary: str | None = None          # LLM-generated narrative (None if skipped or failed)
     answer_error: str | None = None     # Degradation message (None unless LLM failed)
+    clusters: list[NarrativeCluster] = []       # 2-4 narrative clusters (empty when insufficient_data)

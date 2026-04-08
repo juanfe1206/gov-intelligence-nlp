@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { FilterState } from './FilterBar'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
@@ -38,6 +39,7 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
   const [data, setData] = useState<TopicsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const router = useRouter()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -183,19 +185,23 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
           const negW = 100 - posW - neuW
 
           return (
-            <button
-              type="button"
+            <div
               key={item.name}
-              onClick={() => !isDrillDown && onTopicSelect(item.name)}
-              disabled={isDrillDown}
               className={`w-full text-left rounded border border-border p-3 transition-colors ${
-                !isDrillDown ? 'hover:border-primary hover:bg-surface cursor-pointer' : 'cursor-default'
+                !isDrillDown ? 'hover:border-primary hover:bg-surface' : ''
               }`}
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="font-medium text-foreground [font-size:var(--font-size-body)]">
-                  {item.label}
-                </span>
+                <button
+                  type="button"
+                  onClick={() => !isDrillDown && onTopicSelect(item.name)}
+                  disabled={isDrillDown}
+                  className={`flex-1 text-left ${!isDrillDown ? 'cursor-pointer' : 'cursor-default'}`}
+                >
+                  <span className="font-medium text-foreground [font-size:var(--font-size-body)]">
+                    {item.label}
+                  </span>
+                </button>
                 <div className="flex items-center gap-2">
                   {!isDrillDown && item.name === mostNegativeName && (
                     <span className="px-1.5 py-0.5 rounded bg-sentiment-negative/10 text-sentiment-negative [font-size:var(--font-size-small)]">
@@ -210,6 +216,20 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
                   <span className="text-muted [font-size:var(--font-size-small)]">
                     {item.count.toLocaleString()} posts
                   </span>
+                  {/* Q&A investigate button — top-level only */}
+                  {!isDrillDown && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        const q = encodeURIComponent(`What are people saying about ${item.label}?`)
+                        router.push(`/qa?topic=${encodeURIComponent(item.name)}&question=${q}`)
+                      }}
+                      className="px-2 py-0.5 rounded border border-border text-muted hover:text-foreground hover:border-primary [font-size:var(--font-size-small)] whitespace-nowrap"
+                    >
+                      → Q&A
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -225,7 +245,7 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
                   <div className="bg-sentiment-negative" style={{ width: `${negW}%` }} />
                 )}
               </div>
-            </button>
+            </div>
           )
         })}
       </div>
