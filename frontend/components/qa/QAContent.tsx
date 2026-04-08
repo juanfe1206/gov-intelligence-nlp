@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback, useEffect } from 'react'
+import { getDefaultDates } from '@/components/dashboard/FilterBar'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -40,6 +41,7 @@ interface QAResponse {
   question: string
   filters_applied: {
     topic: string | null
+    subtopic: string | null
     party: string | null
     start_date: string | null
     end_date: string | null
@@ -51,6 +53,42 @@ interface QAResponse {
   summary: string | null
   answer_error: string | null
 }
+
+// Taxonomy types for filter panel
+interface Topic {
+  name: string
+  label: string
+  subtopics: Array<{ name: string; label: string }>
+}
+
+interface Taxonomy {
+  topics: Topic[]
+  targets: {
+    parties: Array<{ name: string; label: string }>
+    leaders: Array<{ name: string; label: string }>
+  }
+}
+
+// Q&A filter state (simpler than FilterBar's FilterState)
+interface QAFilterState {
+  topic: string       // '' = no filter
+  subtopic: string    // '' = no filter; only meaningful when topic is set
+  party: string       // '' = no filter; maps to backend QAFilters.party
+  platform: string    // '' = no filter
+  startDate: string   // "YYYY-MM-DD" or '' = no filter
+  endDate: string     // "YYYY-MM-DD" or '' = no filter
+}
+
+const DEFAULT_FILTERS: QAFilterState = {
+  topic: '', subtopic: '', party: '', platform: '', startDate: '', endDate: ''
+}
+
+const QA_TIME_PRESETS = [
+  { label: 'All time', days: 0 },
+  { label: 'Last 7 days', days: 7 },
+  { label: 'Last 14 days', days: 14 },
+  { label: 'Last 30 days', days: 30 },
+]
 
 function sentimentStyles(sentiment: string) {
   switch (sentiment) {
@@ -126,6 +164,36 @@ export default function QAContent() {
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
+  // Filter panel state
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [qaFilters, setQAFilters] = useState<QAFilterState>(DEFAULT_FILTERS)
+  const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null)
+  const [platforms, setPlatforms] = useState<string[]>([])
+
+  // Compute if any filter is active
+  const hasActiveFilters =
+    qaFilters.topic !== '' ||
+    qaFilters.subtopic !== '' ||
+    qaFilters.party !== '' ||
+    qaFilters.platform !== '' ||
+    qaFilters.startDate !== '' ||
+    qaFilters.endDate !== ''
+
+  // Fetch taxonomy and platforms on mount
+  useEffect(() => {
+    Promise.all([
+      fetch(`${API_BASE}/taxonomy`).then((r) => r.json()),
+      fetch(`${API_BASE}/analytics/platforms`).then((r) => r.json()),
+    ])
+      .then(([tax, plat]) => {
+        setTaxonomy(tax)
+        setPlatforms(plat.platforms ?? [])
+      })
+      .catch(() => {
+        // Silently fail — filter options will be empty
+      })
+  }, [])
+
   // Cleanup: abort any in-flight request on unmount
   useEffect(() => {
     return () => {
@@ -153,11 +221,24 @@ export default function QAContent() {
     setError(null)
     setResult(null)
 
+    // Build filters object only when any filter is active
+    const activeFilters = hasActiveFilters ? {
+      topic: qaFilters.topic || undefined,
+      subtopic: qaFilters.subtopic || undefined,
+      party: qaFilters.party || undefined,
+      platform: qaFilters.platform || undefined,
+      start_date: qaFilters.startDate || undefined,
+      end_date: qaFilters.endDate || undefined,
+    } : undefined
+
+    const body: Record<string, unknown> = { question: question.trim() }
+    if (activeFilters) body.filters = activeFilters
+
     try {
       const response = await fetch(`${API_BASE}/qa`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: question.trim() }),
+        body: JSON.stringify(body),
         signal: controller.signal,
       })
 
@@ -181,7 +262,7 @@ export default function QAContent() {
         setLoading(false)
       }
     }
-  }, [question])
+  }, [question, qaFilters, hasActiveFilters])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -268,9 +349,20 @@ export default function QAContent() {
         )}
 
         {/* Scope Label */}
-        <p className="text-muted [font-size:var(--font-size-small)]">
-          Based on {result.metrics.total_retrieved.toLocaleString()} posts
-        </p>
+        {(() => {
+          const total = result.metrics.total_retrieved.toLocaleString()
+          const sd = result.filters_applied.start_date
+          const ed = result.filters_applied.end_date
+          let label = `Based on ${total} posts`
+          if (sd && ed) label += ` · ${sd} to ${ed}`
+          else if (sd) label += ` · from ${sd}`
+          else if (ed) label += ` · up to ${ed}`
+          return (
+            <p className="text-muted [font-size:var(--font-size-small)]">
+              {label}
+            </p>
+          )
+        })()}
       </div>
     )
   }
@@ -329,7 +421,125 @@ export default function QAContent() {
               </button>
             ))}
           </div>
+
+          {/* Filter Toggle Button */}
+          <button
+            type="button"
+            onClick={() => setFilterOpen((o) => !o)}
+            className="self-start text-muted hover:text-foreground [font-size:var(--font-size-small)] flex items-center gap-1 mt-1"
+          >
+            Filters {filterOpen ? '▲' : '▼'}
+          </button>
         </div>
+
+        {/* Filter Panel */}
+        {filterOpen && (
+          <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-border">
+            {/* Topic select */}
+            <select
+              value={qaFilters.topic}
+              onChange={(e) => {
+                const topic = e.target.value
+                setQAFilters((f) => ({
+                  ...f,
+                  topic,
+                  subtopic: '', // reset subtopic when topic changes
+                }))
+              }}
+              className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+            >
+              <option value="">All Topics</option>
+              {taxonomy?.topics.map((t) => (
+                <option key={t.name} value={t.name}>{t.label}</option>
+              ))}
+            </select>
+
+            {/* Subtopic select */}
+            <select
+              value={qaFilters.subtopic}
+              onChange={(e) => setQAFilters((f) => ({ ...f, subtopic: e.target.value }))}
+              disabled={!qaFilters.topic}
+              className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground disabled:opacity-50"
+            >
+              <option value="">All Subtopics</option>
+              {(() => {
+                const selectedTopic = taxonomy?.topics.find((t) => t.name === qaFilters.topic)
+                return selectedTopic?.subtopics.map((s) => (
+                  <option key={s.name} value={s.name}>{s.label}</option>
+                ))
+              })()}
+            </select>
+
+            {/* Party/Target select */}
+            <select
+              value={qaFilters.party}
+              onChange={(e) => setQAFilters((f) => ({ ...f, party: e.target.value }))}
+              className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+            >
+              <option value="">All Parties / Leaders</option>
+              {(() => {
+                const targets = taxonomy
+                  ? [...taxonomy.targets.parties, ...taxonomy.targets.leaders]
+                  : []
+                return targets.map((t) => (
+                  <option key={t.name} value={t.name}>{t.label}</option>
+                ))
+              })()}
+            </select>
+
+            {/* Platform select */}
+            <select
+              value={qaFilters.platform}
+              onChange={(e) => setQAFilters((f) => ({ ...f, platform: e.target.value }))}
+              className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+            >
+              <option value="">All Platforms</option>
+              {platforms.map((p) => (
+                <option key={p} value={p}>{p}</option>
+              ))}
+            </select>
+
+            {/* Time range select */}
+            {(() => {
+              // Compute selected preset from startDate/endDate
+              const selectedPreset = QA_TIME_PRESETS.find(({ days }) => {
+                if (days === 0) return qaFilters.startDate === '' && qaFilters.endDate === ''
+                const { startDate: ps, endDate: pe } = getDefaultDates(days)
+                return qaFilters.startDate === ps && qaFilters.endDate === pe
+              })
+              return (
+                <select
+                  value={selectedPreset?.days ?? 0}
+                  onChange={(e) => {
+                    const days = parseInt(e.target.value)
+                    if (days === 0) {
+                      setQAFilters((f) => ({ ...f, startDate: '', endDate: '' }))
+                    } else {
+                      const { startDate, endDate } = getDefaultDates(days)
+                      setQAFilters((f) => ({ ...f, startDate, endDate }))
+                    }
+                  }}
+                  className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+                >
+                  {QA_TIME_PRESETS.map(({ label, days }) => (
+                    <option key={days} value={days}>{label}</option>
+                  ))}
+                </select>
+              )
+            })()}
+
+            {/* Clear filters button */}
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={() => { setQAFilters(DEFAULT_FILTERS) }}
+                className="px-2 py-1 border border-border rounded text-muted hover:text-foreground [font-size:var(--font-size-small)]"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Answer Area */}

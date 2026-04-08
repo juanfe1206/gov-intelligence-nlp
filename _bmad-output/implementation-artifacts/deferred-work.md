@@ -35,3 +35,8 @@
 - Sentiment type mismatch: frontend `QAPostItem.sentiment` is union type, backend schema is `str` — speculative about future backend changes
 - `filters_applied` not rendered in the UI — not required by Story 3.3 spec
 - `insufficient_data` early-return hides metrics/posts — backend returns empty data in this case, so behavior is correct
+
+## Deferred from: code review of 3-4-qa-filter-controls-multi-session-iteration (2026-04-08)
+
+- Silent taxonomy/platform fetch failure (`.catch(() => {})`) — spec-compliant and mirrors FilterBar pattern; consider adding console.warn or user-facing fallback in future polish pass
+- `hasActiveFilters` redundant in useCallback deps (derived from `qaFilters` already in deps) — spec-mandated, harmless; can remove in a refactor pass

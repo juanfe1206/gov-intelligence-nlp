@@ -29,6 +29,7 @@ async def retrieve_and_aggregate(
     taxonomy: TaxonomyConfig,
     question: str,
     topic: str | None = None,
+    subtopic: str | None = None,
     party: str | None = None,
     start_date: date | None = None,
     end_date: date | None = None,
@@ -38,6 +39,7 @@ async def retrieve_and_aggregate(
     """Retrieve top-N relevant posts via vector similarity, then aggregate metrics."""
     filters_applied = QAFilters(
         topic=topic,
+        subtopic=subtopic,
         party=party,
         start_date=start_date,
         end_date=end_date,
@@ -66,6 +68,8 @@ async def retrieve_and_aggregate(
     ]
     if topic is not None:
         sql_filters.append(ProcessedPost.topic == topic)
+    if subtopic is not None:
+        sql_filters.append(ProcessedPost.subtopic == subtopic)
     if party is not None:
         sql_filters.append(ProcessedPost.target == party)
     if start_date is not None:

@@ -34,6 +34,7 @@ async def ask_question(
         taxonomy=taxonomy,
         question=body.question.strip(),
         topic=f.topic if f else None,
+        subtopic=f.subtopic if f else None,
         party=f.party if f else None,
         start_date=f.start_date if f else None,
         end_date=f.end_date if f else None,

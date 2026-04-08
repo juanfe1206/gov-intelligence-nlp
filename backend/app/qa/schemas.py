@@ -8,6 +8,7 @@ from pydantic import BaseModel
 class QAFilters(BaseModel):
     """Optional filter parameters for Q&A retrieval."""
     topic: str | None = None
+    subtopic: str | None = None
     party: str | None = None       # maps to ProcessedPost.target
     start_date: date | None = None
     end_date: date | None = None
