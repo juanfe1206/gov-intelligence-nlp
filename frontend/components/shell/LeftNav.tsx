@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { label: "Dashboard", href: "/dashboard", icon: "📊" },
   { label: "Q&A", href: "/qa", icon: "💬" },
+  { label: "Admin", href: "/admin", icon: "⚙️" },
 ];
 
 export default function LeftNav() {

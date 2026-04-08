@@ -46,3 +46,9 @@
 - Retry button styling deviates from spec — current style is intentionally more prominent but doesn't match "Clear filters" exactly; will revisit styling holistically at end of dev using external tool UIs as design inspiration
 - Suggestion shows only one action even when multiple filters are active — currently suggests removing only the most specific filter; AC3 example shows combined suggestion but implementation follows priority order; UX enhancement beyond current spec
 - No loading text change on Retry button — label stays "Retry" during loading; common pattern is "Retrying…" but not specified in AC; nice-to-have UX improvement
+
+## Deferred from: code review of 4-1-admin-operations-dashboard-ui.md (2026-04-08)
+
+- No auth/authorization guard on admin page or retry endpoint — any user can view admin page and trigger retry; not Story 4.1 scope, Story 4.3 covers unauthenticated access
+- `formatDateTime` returns "Invalid Date" for unparseable ISO strings — only triggered by malformed backend data; pre-existing concern not specific to this change
+- "X total jobs" header can display count larger than displayed list — API defaults to `limit=50`; no pagination in Story 4.1 scope
