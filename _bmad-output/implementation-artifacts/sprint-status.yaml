@@ -65,14 +65,14 @@ development_status:
   epic-2-retrospective: done
 
   # Epic 3: LLM-Powered Q&A Intelligence Interface
-  epic-3: in-progress
+  epic-3: done
   3-1-qa-retrieval-aggregation-backend: done
   3-2-llm-answer-generation: done
   3-3-qa-frontend-question-input-insight-summary-panel: done
   3-4-qa-filter-controls-multi-session-iteration: done
   3-5-narrative-clusters-rapid-response-investigation: done
   3-6-qa-resilience-error-states-demo-readiness: done
-  epic-3-retrospective: optional
+  epic-3-retrospective: done
 
   # Epic 4: Admin, Operations & Demo Readiness
   epic-4: backlog
