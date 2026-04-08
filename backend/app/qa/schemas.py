@@ -55,9 +55,11 @@ class QAMetrics(BaseModel):
 
 
 class QAResponse(BaseModel):
-    """Response for POST /qa — retrieval + aggregation results."""
+    """Response for POST /qa — retrieval + aggregation + LLM summary."""
     question: str
     filters_applied: QAFilters
     retrieved_posts: list[QAPostItem]
     metrics: QAMetrics
     insufficient_data: bool    # True when no posts matched filters/question
+    summary: str | None = None          # LLM-generated narrative (None if skipped or failed)
+    answer_error: str | None = None     # Degradation message (None unless LLM failed)

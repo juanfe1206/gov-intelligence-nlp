@@ -1,4 +1,4 @@
-"""Q&A endpoint for natural-language retrieval and aggregation."""
+"""Q&A endpoint for natural-language retrieval, aggregation, and LLM answer generation."""
 
 import logging
 
@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.qa import service as qa_service
+from app.qa.answer import generate_answer
 from app.qa.schemas import QARequest, QAResponse
 
 logger = logging.getLogger(__name__)
@@ -20,12 +21,7 @@ async def ask_question(
     body: QARequest,
     session: AsyncSession = Depends(get_db),
 ) -> QAResponse:
-    """Retrieve relevant posts and aggregate metrics for a natural-language question.
-
-    Performs vector similarity search over processed_posts.embedding,
-    scoped to any provided filters. Returns retrieved posts + aggregated metrics.
-    Story 3.2 extends this to generate an LLM narrative summary.
-    """
+    """Retrieve relevant posts, aggregate metrics, and generate an LLM narrative summary."""
     if not body.question.strip():
         raise HTTPException(status_code=422, detail="question must not be empty")
 
@@ -33,7 +29,7 @@ async def ask_question(
     taxonomy = request.app.state.taxonomy
     f = body.filters  # QAFilters | None
 
-    return await qa_service.retrieve_and_aggregate(
+    qa_result = await qa_service.retrieve_and_aggregate(
         session=session,
         taxonomy=taxonomy,
         question=body.question.strip(),
@@ -44,3 +40,14 @@ async def ask_question(
         platform=f.platform if f else None,
         top_n=top_n,
     )
+
+    if not qa_result.insufficient_data:
+        summary, answer_error = await generate_answer(
+            question=qa_result.question,
+            retrieved_posts=qa_result.retrieved_posts,
+            metrics=qa_result.metrics,
+        )
+        qa_result.summary = summary
+        qa_result.answer_error = answer_error
+
+    return qa_result

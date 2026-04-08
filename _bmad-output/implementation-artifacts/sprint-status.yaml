@@ -67,7 +67,7 @@ development_status:
   # Epic 3: LLM-Powered Q&A Intelligence Interface
   epic-3: in-progress
   3-1-qa-retrieval-aggregation-backend: done
-  3-2-llm-answer-generation: backlog
+  3-2-llm-answer-generation: done
   3-3-qa-frontend-question-input-insight-summary-panel: backlog
   3-4-qa-filter-controls-multi-session-iteration: backlog
   3-5-narrative-clusters-rapid-response-investigation: backlog
