@@ -35,6 +35,9 @@ class Settings(BaseSettings):
     INGESTION_SOURCE_NAME: str = "csv_local"
     INGESTION_PLATFORM_DEFAULT: str = ""
 
+    # Connector configuration
+    CONNECTOR_TWITTER_FILE_PATH: str = "data/twitter_posts.jsonl"
+
     # Processing configuration
     OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"

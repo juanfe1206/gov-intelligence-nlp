@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from app.api.admin import router as admin_router
 from app.api.analytics import router as analytics_router
+from app.api.connectors import router as connectors_router
 from app.api.ingestion import router as ingestion_router
 from app.api.jobs import router as jobs_router
 from app.api.processing import router as processing_router
@@ -87,6 +88,7 @@ async def root():
 app.include_router(admin_router, prefix="/admin", tags=["admin"])
 app.include_router(taxonomy_router, prefix="/taxonomy", tags=["taxonomy"])
 app.include_router(ingestion_router, prefix="/ingest", tags=["ingestion"])
+app.include_router(connectors_router, prefix="/connectors", tags=["connectors"])
 app.include_router(processing_router, prefix="/process", tags=["processing"])
 app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
 app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])

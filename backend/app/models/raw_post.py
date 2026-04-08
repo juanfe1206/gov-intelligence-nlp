@@ -22,6 +22,7 @@ class RawPost(Base):
     platform = Column(String(100), nullable=False)
     original_text = Column(Text, nullable=False)
     content_hash = Column(String(64), nullable=True)  # SHA-256 hash for deduplication
+    external_id = Column(String(255), nullable=True)  # Platform-specific record ID for deduplication
     author = Column(String(255), nullable=True)
     created_at = Column(DateTime(timezone=True), nullable=False, default=func.now())
     metadata_ = Column("metadata", JSONB, nullable=True)  # metadata is reserved

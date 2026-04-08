@@ -24,26 +24,26 @@ So that collection from different platforms can plug into the same ingestion flo
 
 ### Task 1 — Create `backend/app/connectors/` package (AC: #1, #2)
 
-- [ ] Create `backend/app/connectors/__init__.py` (empty)
-- [ ] Create `backend/app/connectors/schemas.py`:
-  - [ ] Define `NormalizedPost` Pydantic model with required fields: `source` (str), `platform` (str), `external_id` (str), `text` (str, min_length=1), `author` (str | None), `created_at` (datetime, timezone-aware), `raw_payload` (dict[str, Any])
-  - [ ] Define `ValidationError` dataclass/model: `field: str`, `message: str`, `raw_value: Any`
-  - [ ] Define `ConnectorRunSummary` Pydantic model: `connector_id` (str), `mode` (Literal["live", "replay"] = "live"), `started_at` (datetime), `finished_at` (datetime | None), `fetched` (int = 0), `normalized` (int = 0), `rejected` (int = 0), `inserted` (int = 0), `duplicates` (int = 0), `validation_errors` (list[ValidationError] = [])
-- [ ] Create `backend/app/connectors/interface.py`:
-  - [ ] Define `BaseConnector` abstract base class (ABC) with abstract methods:
+- [x] Create `backend/app/connectors/__init__.py` (empty)
+- [x] Create `backend/app/connectors/schemas.py`:
+  - [x] Define `NormalizedPost` Pydantic model with required fields: `source` (str), `platform` (str), `external_id` (str), `text` (str, min_length=1), `author` (str | None), `created_at` (datetime, timezone-aware), `raw_payload` (dict[str, Any])
+  - [x] Define `ValidationError` dataclass/model: `field: str`, `message: str`, `raw_value: Any`
+  - [x] Define `ConnectorRunSummary` Pydantic model: `connector_id` (str), `mode` (Literal["live", "replay"] = "live"), `started_at` (datetime), `finished_at` (datetime | None), `fetched` (int = 0), `normalized` (int = 0), `rejected` (int = 0), `inserted` (int = 0), `duplicates` (int = 0), `validation_errors` (list[ValidationError] = [])
+- [x] Create `backend/app/connectors/interface.py`:
+  - [x] Define `BaseConnector` abstract base class (ABC) with abstract methods:
     - `fetch(self) -> list[dict[str, Any]]` — returns raw platform payloads
     - `normalize(self, raw: dict[str, Any]) -> NormalizedPost | None` — returns NormalizedPost or None on failure; populates `validation_errors` on the summary
     - `checkpoint(self) -> dict[str, Any]` — returns cursor/state for incremental runs
-  - [ ] Add class-level `connector_id: str` abstract attribute
-- [ ] Create `backend/app/connectors/validator.py`:
-  - [ ] Implement `validate_and_normalize(connector: BaseConnector, raw_records: list[dict], summary: ConnectorRunSummary) -> list[NormalizedPost]`
-  - [ ] For each raw record: call `connector.normalize(raw)`; on success increment `summary.normalized`; on failure append `ValidationError` to `summary.validation_errors`, increment `summary.rejected`
-  - [ ] Increment `summary.fetched` for every raw record attempted
+  - [x] Add class-level `connector_id: str` abstract attribute
+- [x] Create `backend/app/connectors/validator.py`:
+  - [x] Implement `validate_and_normalize(connector: BaseConnector, raw_records: list[dict], summary: ConnectorRunSummary) -> list[NormalizedPost]`
+  - [x] For each raw record: call `connector.normalize(raw)`; on success increment `summary.normalized`; on failure append `ValidationError` to `summary.validation_errors`, increment `summary.rejected`
+  - [x] Increment `summary.fetched` for every raw record attempted
 
 ### Task 2 — Create ingestion bridge function (AC: #1)
 
-- [ ] Add `ingest_normalized_posts(session, posts: list[NormalizedPost], summary: ConnectorRunSummary) -> None` in `backend/app/connectors/validator.py` (or a new `backend/app/connectors/ingestion_bridge.py`):
-  - [ ] Map each `NormalizedPost` to a `RawPost` row:
+- [x] Add `ingest_normalized_posts(session, posts: list[NormalizedPost], summary: ConnectorRunSummary) -> None` in `backend/app/connectors/validator.py` (or a new `backend/app/connectors/ingestion_bridge.py`):
+  - [x] Map each `NormalizedPost` to a `RawPost` row:
     - `source` → `source`
     - `platform` → `platform`
     - `original_text` ← `text`
@@ -51,20 +51,20 @@ So that collection from different platforms can plug into the same ingestion flo
     - `author` → `author`
     - `created_at` → `created_at`
     - `metadata_` ← `{"external_id": post.external_id, "raw_payload": post.raw_payload}`
-  - [ ] Use the existing `pg_insert(RawPost).on_conflict_do_nothing(index_elements=["source", "content_hash"])` deduplication pattern (same as `ingestion/service.py:_insert_rows`)
-  - [ ] On conflict (duplicate): increment `summary.duplicates`; on insert: increment `summary.inserted`
-  - [ ] Commit the session after all rows
+  - [x] Use the existing `pg_insert(RawPost).on_conflict_do_nothing(index_elements=["source", "content_hash"])` deduplication pattern (same as `ingestion/service.py:_insert_rows`)
+  - [x] On conflict (duplicate): increment `summary.duplicates`; on insert: increment `summary.inserted`
+  - [x] Commit the session after all rows
 
 ### Task 3 — Smoke tests (AC verification)
 
-- [ ] AC1: Write `backend/tests/connectors/test_interface.py`:
-  - [ ] Create a minimal concrete `DummyConnector(BaseConnector)` that implements all abstract methods
-  - [ ] Assert `DummyConnector` instantiates without error
-  - [ ] Assert `connector.fetch()` returns a list
-  - [ ] Assert `connector.normalize(raw)` returns a valid `NormalizedPost` given a complete raw dict
-  - [ ] Assert `connector.normalize(raw)` returns `None` given an incomplete/malformed raw dict (e.g. missing `text`)
-- [ ] AC2: Test `validate_and_normalize`:
-  - [ ] Given one valid + one malformed record → `summary.normalized == 1`, `summary.rejected == 1`, `summary.fetched == 2`, `len(summary.validation_errors) == 1`
+- [x] AC1: Write `backend/tests/connectors/test_interface.py`:
+  - [x] Create a minimal concrete `DummyConnector(BaseConnector)` that implements all abstract methods
+  - [x] Assert `DummyConnector` instantiates without error
+  - [x] Assert `connector.fetch()` returns a list
+  - [x] Assert `connector.normalize(raw)` returns a valid `NormalizedPost` given a complete raw dict
+  - [x] Assert `connector.normalize(raw)` returns `None` given an incomplete/malformed raw dict (e.g. missing `text`)
+- [x] AC2: Test `validate_and_normalize`:
+  - [x] Given one valid + one malformed record → `summary.normalized == 1`, `summary.rejected == 1`, `summary.fetched == 2`, `len(summary.validation_errors) == 1`
 
 ## Dev Notes
 

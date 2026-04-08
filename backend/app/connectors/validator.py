@@ -85,10 +85,10 @@ async def ingest_normalized_posts(
                 platform=post.platform,
                 original_text=post.text,
                 content_hash=content_hash,
+                external_id=post.external_id,
                 author=post.author,
                 created_at=post.created_at,
                 metadata_={
-                    "external_id": post.external_id,
                     "raw_payload": post.raw_payload,
                 },
             )
