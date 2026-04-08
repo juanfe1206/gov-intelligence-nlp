@@ -25,3 +25,13 @@
 - Party comparison sentiment buckets are case-sensitive and can silently zero-out counts when labels are not exactly normalized lowercase.
 - Spike detection treats any non-zero recent count over zero baseline as a spike; this can create false positives on sparse datasets.
 - Dashboard empty-state predicate likely does not trigger when backend returns zero-filled time series for valid ranges.
+
+## Deferred from: code review of 3-3-qa-frontend-question-input-insight-summary-panel (2026-04-08)
+
+- SpikeAlertBanner navigates to `/qa?topic=...&question=...` but QAContent ignores URL params — Story 3.5 scope (clickable dashboard tiles pre-filling the question)
+- Frontend never sends `filters` or `top_n` in POST body — Story 3.4 scope (filter controls)
+- `NEXT_PUBLIC_API_BASE_URL` fallback to `http://localhost:8000` — established codebase pattern across all components
+- Render path where `insufficient_data` is false but both `summary` and `answer_error` are null — not practically reachable with current backend code
+- Sentiment type mismatch: frontend `QAPostItem.sentiment` is union type, backend schema is `str` — speculative about future backend changes
+- `filters_applied` not rendered in the UI — not required by Story 3.3 spec
+- `insufficient_data` early-return hides metrics/posts — backend returns empty data in this case, so behavior is correct

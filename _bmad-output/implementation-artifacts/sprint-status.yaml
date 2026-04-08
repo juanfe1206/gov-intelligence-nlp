@@ -68,7 +68,7 @@ development_status:
   epic-3: in-progress
   3-1-qa-retrieval-aggregation-backend: done
   3-2-llm-answer-generation: done
-  3-3-qa-frontend-question-input-insight-summary-panel: backlog
+  3-3-qa-frontend-question-input-insight-summary-panel: done
   3-4-qa-filter-controls-multi-session-iteration: backlog
   3-5-narrative-clusters-rapid-response-investigation: backlog
   3-6-qa-resilience-error-states-demo-readiness: backlog
