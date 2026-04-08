@@ -145,3 +145,26 @@ class SpikesResponse(BaseModel):
     spikes: list[SpikeAlert]
     window_hours: int
     detected_at: str  # ISO date string "YYYY-MM-DD"
+
+
+class ExportFilters(BaseModel):
+    """Filter parameters included in the export for reproducibility."""
+
+    start_date: str
+    end_date: str
+    topic: str | None = None
+    subtopic: str | None = None
+    target: str | None = None
+    platform: str | None = None
+    parties: list[str] | None = None
+
+
+class ExportSnapshot(BaseModel):
+    """Structured snapshot for analyst export."""
+
+    exported_at: str  # ISO date string "YYYY-MM-DD"
+    filters: ExportFilters
+    volume: VolumeResponse
+    sentiment: SentimentResponse
+    topics: TopicsResponse
+    posts: PostsResponse  # up to 50 posts

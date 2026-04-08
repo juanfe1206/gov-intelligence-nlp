@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-04-06
-last_updated: 2026-04-08T23:59:00
+last_updated: 2026-04-08
 project: gov-intelligence-nlp
 project_key: NOKEY
 tracking_system: file-system
@@ -53,7 +53,7 @@ development_status:
   epic-1-retrospective: done
 
   # Epic 2: Analytics Dashboard & Data Exploration
-  epic-2: in-progress
+  epic-2: done
   2-1-frontend-shell-layout-design-system-setup: done
   2-2-post-volume-sentiment-over-time-charts: done
   2-3-dashboard-filter-controls: done
@@ -61,8 +61,8 @@ development_status:
   2-5-representative-posts-panel-evidence-post-cards: done
   2-6-cross-party-sentiment-comparison: done
   2-7-spike-alert-detection-banner: done
-  2-8-analyst-deep-dive-export-copy: backlog
-  epic-2-retrospective: optional
+  2-8-analyst-deep-dive-export-copy: done
+  epic-2-retrospective: done
 
   # Epic 3: LLM-Powered Q&A Intelligence Interface
   epic-3: backlog

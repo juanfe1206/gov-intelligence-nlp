@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import VolumeChart from '@/components/charts/VolumeChart'
 import SentimentChart from '@/components/charts/SentimentChart'
 import FilterBar, { FilterState, getDefaultDates } from './FilterBar'
@@ -36,6 +36,86 @@ export default function DashboardContent() {
   const [sentimentData, setSentimentData] = useState<SentimentData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
+  const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Build export URL from current filters
+  const exportUrl = useMemo(() => {
+    const params = new URLSearchParams()
+    if (filters.startDate) params.set('start_date', filters.startDate)
+    if (filters.endDate) params.set('end_date', filters.endDate)
+    if (filters.topic) params.set('topic', filters.topic)
+    if (filters.subtopic) params.set('subtopic', filters.subtopic)
+    if (filters.target) params.set('target', filters.target)
+    if (filters.platform) params.set('platform', filters.platform)
+    filters.selectedParties.forEach((party) => params.append('parties', party))
+    return `${API_BASE}/analytics/export?${params.toString()}`
+  }, [filters])
+
+  // Build summary text from current data
+  const summaryText = useMemo(() => {
+    const lines: string[] = ['=== Gov Intelligence Analytics Summary ===']
+    lines.push(`Date range: ${filters.startDate ?? 'default'} → ${filters.endDate ?? 'default'}`)
+    if (filters.topic) lines.push(`Topic label: ${filters.topic}`)
+    if (filters.subtopic) lines.push(`Subtopic label: ${filters.subtopic}`)
+    if (filters.platform) lines.push(`Platform: ${filters.platform}`)
+    if (filters.selectedParties.length) lines.push(`Parties: ${filters.selectedParties.join(', ')}`)
+    if (volumeData) lines.push(`Total posts: ${volumeData.total.toLocaleString()}`)
+    if (sentimentData?.data.length) {
+      const totals = sentimentData.data.reduce(
+        (acc, d) => ({
+          pos: acc.pos + d.positive,
+          neu: acc.neu + d.neutral,
+          neg: acc.neg + d.negative,
+        }),
+        { pos: 0, neu: 0, neg: 0 },
+      )
+      const total = totals.pos + totals.neu + totals.neg || 1
+      lines.push(
+        `Sentiment: ${((totals.pos / total) * 100).toFixed(1)}% positive, ` +
+        `${((totals.neu / total) * 100).toFixed(1)}% neutral, ` +
+        `${((totals.neg / total) * 100).toFixed(1)}% negative`,
+      )
+    }
+    return lines.join('\n')
+  }, [filters, volumeData, sentimentData])
+
+  // Copy summary to clipboard
+  async function handleCopySummary() {
+    try {
+      await navigator.clipboard.writeText(summaryText)
+      setCopied(true)
+      setActionMessage('Summary copied to clipboard.')
+      if (copyResetTimeoutRef.current) {
+        clearTimeout(copyResetTimeoutRef.current)
+      }
+      copyResetTimeoutRef.current = setTimeout(() => setCopied(false), 2000)
+    } catch {
+      setActionMessage('Unable to copy summary. Check clipboard permissions and try again.')
+    }
+  }
+
+  async function handleExport() {
+    try {
+      const response = await fetch(exportUrl)
+      if (!response.ok) {
+        throw new Error('Failed to export snapshot')
+      }
+      const blob = await response.blob()
+      const downloadUrl = window.URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = downloadUrl
+      link.download = 'gov-intelligence-export.json'
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(downloadUrl)
+      setActionMessage('Export started.')
+    } catch {
+      setActionMessage('Export failed. Please try again.')
+    }
+  }
 
   useEffect(() => {
     const controller = new AbortController()
@@ -44,6 +124,7 @@ export default function DashboardContent() {
     async function fetchData() {
       setLoading(true)
       setError(null)
+      setActionMessage(null)
       try {
         const params = new URLSearchParams({
           start_date: filters.startDate,
@@ -77,6 +158,9 @@ export default function DashboardContent() {
     return () => {
       isActive = false
       controller.abort()
+      if (copyResetTimeoutRef.current) {
+        clearTimeout(copyResetTimeoutRef.current)
+      }
     }
   }, [filters])
 
@@ -115,6 +199,28 @@ export default function DashboardContent() {
     return (
       <>
         <SpikeAlertBanner filters={filters} />
+
+        {/* Export and Copy Summary Buttons */}
+        <div className="col-span-12 flex justify-end gap-2">
+          <button
+            onClick={handleCopySummary}
+            className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
+          >
+            {copied ? 'Copied!' : 'Copy summary'}
+          </button>
+          <button
+            onClick={handleExport}
+            className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
+          >
+            Export
+          </button>
+        </div>
+        {actionMessage && (
+          <div className="col-span-12">
+            <p className="text-muted [font-size:var(--font-size-small)]">{actionMessage}</p>
+          </div>
+        )}
+
         <FilterBar filters={filters} onChange={setFilters} />
         <TopicsPanel
           filters={filters}
@@ -137,6 +243,28 @@ export default function DashboardContent() {
   return (
     <>
       <SpikeAlertBanner filters={filters} />
+
+      {/* Export and Copy Summary Buttons */}
+      <div className="col-span-12 flex justify-end gap-2">
+        <button
+          onClick={handleCopySummary}
+          className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
+        >
+          {copied ? 'Copied!' : 'Copy summary'}
+        </button>
+        <button
+          onClick={handleExport}
+          className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
+        >
+          Export
+        </button>
+      </div>
+      {actionMessage && (
+        <div className="col-span-12">
+          <p className="text-muted [font-size:var(--font-size-small)]">{actionMessage}</p>
+        </div>
+      )}
+
       <FilterBar filters={filters} onChange={setFilters} />
 
       <div className="col-span-12">

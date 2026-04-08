@@ -24,6 +24,8 @@ from app.analytics.schemas import (
     ComparisonResponse,
     SpikeAlert,
     SpikesResponse,
+    ExportFilters,
+    ExportSnapshot,
 )
 from app.taxonomy.schemas import TaxonomyConfig
 
@@ -697,4 +699,40 @@ async def get_spikes(
         spikes=spikes,
         window_hours=window_hours,
         detected_at=str(date.today()),
+    )
+
+
+async def get_export(
+    session: AsyncSession,
+    taxonomy: TaxonomyConfig,
+    start_date: date,
+    end_date: date,
+    topic: str | None = None,
+    subtopic: str | None = None,
+    target: str | None = None,
+    platform: str | None = None,
+    parties: list[str] | None = None,
+) -> ExportSnapshot:
+    """Bundle all analytics data for export."""
+    volume, sentiment, topics, posts = await asyncio.gather(
+        get_volume(session, start_date, end_date, topic, subtopic, target, platform),
+        get_sentiment(session, start_date, end_date, topic, subtopic, target, platform),
+        get_topics(session, taxonomy, start_date, end_date, topic, subtopic, target, platform),
+        get_posts(session, taxonomy, start_date, end_date, topic, subtopic, target, platform, limit=50),
+    )
+    return ExportSnapshot(
+        exported_at=str(date.today()),
+        filters=ExportFilters(
+            start_date=str(start_date),
+            end_date=str(end_date),
+            topic=topic,
+            subtopic=subtopic,
+            target=target,
+            platform=platform,
+            parties=parties,
+        ),
+        volume=volume,
+        sentiment=sentiment,
+        topics=topics,
+        posts=posts,
     )

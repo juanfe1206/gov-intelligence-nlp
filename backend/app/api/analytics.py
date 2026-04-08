@@ -1,14 +1,23 @@
 """Analytics API endpoints for volume and sentiment data."""
 
+import json
 import logging
 from datetime import date, timedelta
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.db.session import get_db
-from app.analytics.schemas import VolumeResponse, SentimentResponse, PlatformsResponse, TopicsResponse, PostsResponse, ComparisonResponse, SpikesResponse
+from app.analytics.schemas import (
+    VolumeResponse,
+    SentimentResponse,
+    PlatformsResponse,
+    TopicsResponse,
+    PostsResponse,
+    ComparisonResponse,
+    SpikesResponse,
+)
 from app.analytics import service as analytics_service
 from app.models.raw_post import RawPost
 
@@ -163,4 +172,41 @@ async def get_spikes(
         volume_threshold=volume_threshold,
         sentiment_threshold=sentiment_threshold,
         platform=platform,
+    )
+
+
+@router.get("/export")
+async def export_snapshot(
+    request: Request,
+    start_date: date | None = Query(default=None),
+    end_date: date | None = Query(default=None),
+    topic: str | None = Query(default=None),
+    subtopic: str | None = Query(default=None),
+    target: str | None = Query(default=None),
+    platform: str | None = Query(default=None),
+    parties: list[str] = Query(default=[]),
+    session: AsyncSession = Depends(get_db),
+) -> Response:
+    """Export a structured snapshot of analytics data as a downloadable JSON file."""
+    s = start_date or _default_start()
+    e = end_date or _default_end()
+    if s > e:
+        raise HTTPException(status_code=422, detail="start_date must be before end_date")
+    taxonomy = request.app.state.taxonomy
+    snapshot = await analytics_service.get_export(
+        session,
+        taxonomy,
+        s,
+        e,
+        topic,
+        subtopic,
+        target,
+        platform,
+        parties=parties if parties else None,
+    )
+    json_bytes = json.dumps(snapshot.model_dump(), ensure_ascii=False, indent=2).encode("utf-8")
+    return Response(
+        content=json_bytes,
+        media_type="application/json",
+        headers={"Content-Disposition": 'attachment; filename="gov-intelligence-export.json"'},
     )

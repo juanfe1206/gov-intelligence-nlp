@@ -19,3 +19,9 @@
 ## Deferred from: code review of 2-7-spike-alert-detection-banner.md (2026-04-08)
 
 - Top-5 sort mixes volume ratios with sentiment deltas on a single `magnitude` scale, so volume spikes tend to crowd out sentiment spikes; matches current spec but may need product input if balanced surfacing is required.
+
+## Deferred from: code review of 2-8-analyst-deep-dive-export-copy.md (2026-04-08)
+
+- Party comparison sentiment buckets are case-sensitive and can silently zero-out counts when labels are not exactly normalized lowercase.
+- Spike detection treats any non-zero recent count over zero baseline as a spike; this can create false positives on sparse datasets.
+- Dashboard empty-state predicate likely does not trigger when backend returns zero-filled time series for valid ranges.
