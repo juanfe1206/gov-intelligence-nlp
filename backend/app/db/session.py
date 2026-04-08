@@ -7,7 +7,7 @@ from app.config import settings
 
 # Pooler-friendly test mode: avoid keeping/reusing long-lived pooled connections.
 engine_kwargs: dict = {
-    "echo": True,  # Log SQL queries (disable in production)
+    "echo": settings.APP_ENV == "dev",  # Log SQL queries only in dev environment
     "future": True,
 }
 # In tests/CI, pytest may use different event loops across test cases.

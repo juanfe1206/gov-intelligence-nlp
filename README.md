@@ -33,3 +33,60 @@ API docs at http://localhost:8000/docs
 
 ### Environment Variables
 Copy `.env.example` to `.env` and configure your database URL and API keys.
+
+---
+
+## Demo Setup
+
+For classroom demos, the platform is configured for **no authentication required** (demo/classroom use only — not intended for production). All users share direct access to the dashboard.
+
+### Prerequisites
+Same as Quick Start:
+- Node.js 20+
+- Python 3.11+
+- PostgreSQL 15+ with pgvector extension (Supabase or local)
+
+### Environment Configuration
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and configure:
+1. `DATABASE_URL` and `DATABASE_SYNC_URL` - Your Supabase or PostgreSQL connection string
+2. `OPENAI_API_KEY` - Valid OpenAI API key (required for Q&A feature)
+3. `APP_ENV=demo` - Sets demo mode (disables SQL query logging)
+4. `BACKEND_HOST=0.0.0.0` - Allows the backend to accept connections from other devices
+
+For **classroom access from other devices**, replace `localhost` with the demo machine's IP address:
+```bash
+# In .env (backend):
+CORS_ALLOW_ORIGINS=http://192.168.1.42:3000,http://localhost:3000
+BACKEND_HOST=0.0.0.0
+
+# In frontend .env.local (or .env if using dev server):
+NEXT_PUBLIC_API_BASE_URL=http://192.168.1.42:8000
+```
+
+> **Note:** `NEXT_PUBLIC_*` environment variables are read at build time. If you change them after running `npm run build`, you must rebuild. In development mode (`npm run dev`), changes take effect on restart.
+
+### Starting Both Services
+
+**Backend** (from project root, `backend/` directory):
+```bash
+cd backend
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+Note: `--host 0.0.0.0` is required for network access from other devices. Omit `--reload` for stable demo runs — it adds overhead and can restart the server if files change mid-demo.
+
+**Frontend** (from project root, `frontend/` directory):
+```bash
+cd frontend
+npm run dev -- -H 0.0.0.0
+```
+Note: `-H 0.0.0.0` is required for network access from other devices. Without it, Next.js only listens on `localhost`.
+
+### Concurrent Users
+The default SQLAlchemy pool (`pool_size=5, max_overflow=10`) supports **5-10 simultaneous users** without additional configuration. Each Q&A request holds a connection for ~1-5 seconds.
+
+### No Authentication
+The platform requires **no login** for demo/classroom use. All users reach the dashboard directly at http://localhost:3000/dashboard or http://localhost:3000/admin. This is intentional for the shared classroom scenario — do not deploy this configuration to production without adding authentication.

@@ -59,3 +59,13 @@
 - No timeout on `/health/db` DB connection in production — test/CI config sets timeouts but production does not; a network partition could hang the endpoint indefinitely; deployment config issue
 - Concurrent health-check requests with no deduplication guard — if a prior fetchHealth is still in-flight, the 30s interval fires another; unlikely with fast endpoints but possible with slow DB
 - `DbHealth.db` field stored but never rendered — the `db?: 'connected' | 'disconnected'` property is populated from API but rendering relies solely on `dbHealth.status`; minor unused state
+
+## Deferred from: code review of 4-3-demo-environment-configuration-unauthenticated-access (2026-04-08)
+
+- `APP_ENV` unvalidated freeform string — any unrecognized value (typo like `deom`) silently gets echo-off + default pool behavior with no warning; pre-existing in config.py since Story 1.1
+- Hardcoded Supabase URL in `DATABASE_SYNC_URL` placeholder — contains a real project reference (`db.orntdllztsochjilskwm.supabase.co`); potential info leak; pre-existing
+- `batch_size=0` silently falls back to settings default when `process_posts` is called directly (bypassing Pydantic validation); pre-existing in processing/service.py
+- CORS wildcard `*` check only catches exact `"*"` string — patterns like `http://*` or `https://*` pass validation but never match any real origin, silently blocking CORS; pre-existing in config.py
+- CORS empty origin list combined with `allow_credentials=True` — Starlette silently rejects all cross-origin requests with no diagnostic; pre-existing in config.py
+- `PROCESSING_MAX_RETRIES=0` accepted without validation — tenacity `stop_after_attempt(0)` immediately stops without any attempt; pre-existing in config.py
+- `PROCESSING_BATCH_SIZE=0` causes infinite loop — `while True` loop with `limit=0` fetches zero rows forever; pre-existing in config.py
