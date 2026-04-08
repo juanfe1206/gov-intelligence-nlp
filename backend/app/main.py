@@ -9,6 +9,7 @@ from app.api.analytics import router as analytics_router
 from app.api.ingestion import router as ingestion_router
 from app.api.jobs import router as jobs_router
 from app.api.processing import router as processing_router
+from app.api.qa import router as qa_router
 from app.api.taxonomy import router as taxonomy_router
 from app.config import settings
 from app.taxonomy.loader import load_taxonomy
@@ -69,6 +70,7 @@ app.include_router(ingestion_router, prefix="/ingest", tags=["ingestion"])
 app.include_router(processing_router, prefix="/process", tags=["processing"])
 app.include_router(jobs_router, prefix="/jobs", tags=["jobs"])
 app.include_router(analytics_router, prefix="/analytics", tags=["analytics"])
+app.include_router(qa_router, prefix="/qa", tags=["qa"])
 
 
 if __name__ == "__main__":
