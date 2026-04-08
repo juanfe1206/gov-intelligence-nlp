@@ -4,6 +4,13 @@ import { useState, useEffect, useCallback } from 'react'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
+interface ResetResponse {
+  deleted_processed_posts: number
+  deleted_jobs: number
+  deleted_raw_posts: number
+  message: string
+}
+
 interface JobResponse {
   id: string
   job_type: string
@@ -72,6 +79,11 @@ export default function AdminContent() {
   const [retryError, setRetryError] = useState<Record<string, string>>({})
   const [apiHealth, setApiHealth] = useState<ApiHealth>({ status: 'loading' })
   const [dbHealth, setDbHealth] = useState<DbHealth>({ status: 'loading' })
+  const [resetting, setResetting] = useState(false)
+  const [resetConfirm, setResetConfirm] = useState(false)
+  const [preserveRaw, setPreserveRaw] = useState(true)
+  const [resetResult, setResetResult] = useState<ResetResponse | null>(null)
+  const [resetError, setResetError] = useState<string | null>(null)
 
   const fetchJobs = useCallback(async () => {
     setLoading(true)
@@ -171,6 +183,37 @@ export default function AdminContent() {
       })
     }
   }, [fetchJobs])
+
+  const handleResetConfirm = useCallback(() => {
+    setResetConfirm(true)
+    setResetResult(null)
+    setResetError(null)
+  }, [])
+
+  const handleReset = useCallback(async () => {
+    setResetting(true)
+    setResetError(null)
+    setResetResult(null)
+    try {
+      const res = await fetch(`${API_BASE}/admin/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ preserve_raw: preserveRaw }),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.detail || 'Reset failed')
+      }
+      const data: ResetResponse = await res.json()
+      setResetResult(data)
+      setResetConfirm(false)
+      await fetchJobs()
+    } catch (err) {
+      setResetError((err as Error).message || 'Reset failed')
+    } finally {
+      setResetting(false)
+    }
+  }, [fetchJobs, preserveRaw])
 
   // Derive source summary from completed/partial ingest jobs
   const sourceSummary = jobs
@@ -394,6 +437,72 @@ export default function AdminContent() {
               </tbody>
             </table>
           </div>
+        )}
+      </div>
+
+      {/* Demo Reset */}
+      <div className="bg-surface-raised rounded-lg border border-border p-4">
+        <h3 className="font-medium text-foreground [font-size:var(--font-size-body)] mb-1">
+          Demo Reset
+        </h3>
+        <p className="text-muted [font-size:var(--font-size-small)] mb-3">
+          Clear processed posts and job records to start a fresh demo run.
+          Raw posts can optionally be preserved to avoid re-ingestion.
+        </p>
+
+        <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={preserveRaw}
+            onChange={(e) => setPreserveRaw(e.target.checked)}
+            className="accent-primary"
+          />
+          <span className="[font-size:var(--font-size-small)] text-foreground">
+            Preserve raw posts (recommended — skip re-ingestion)
+          </span>
+        </label>
+
+        {!resetConfirm ? (
+          <button
+            type="button"
+            onClick={handleResetConfirm}
+            disabled={resetting}
+            className="px-3 py-1.5 rounded border border-sentiment-negative text-sentiment-negative hover:bg-sentiment-negative/10 [font-size:var(--font-size-small)] disabled:opacity-50"
+          >
+            Reset Demo Data
+          </button>
+        ) : (
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={handleReset}
+              disabled={resetting}
+              className="px-3 py-1.5 rounded border border-sentiment-negative bg-sentiment-negative/10 text-sentiment-negative hover:bg-sentiment-negative/20 [font-size:var(--font-size-small)] disabled:opacity-50"
+            >
+              {resetting ? 'Resetting…' : 'Confirm Reset'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setResetConfirm(false)}
+              disabled={resetting}
+              className="px-3 py-1.5 rounded border border-border bg-surface text-foreground hover:bg-surface-raised [font-size:var(--font-size-small)] disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
+        {resetResult && (
+          <p className="mt-3 text-sentiment-positive [font-size:var(--font-size-small)]">
+            {resetResult.message} ({resetResult.deleted_processed_posts} processed posts,{' '}
+            {resetResult.deleted_jobs} jobs
+            {resetResult.deleted_raw_posts > 0 ? `, ${resetResult.deleted_raw_posts} raw posts` : ''} cleared)
+          </p>
+        )}
+        {resetError && (
+          <p className="mt-3 text-sentiment-negative [font-size:var(--font-size-small)]">
+            {resetError}
+          </p>
         )}
       </div>
     </div>

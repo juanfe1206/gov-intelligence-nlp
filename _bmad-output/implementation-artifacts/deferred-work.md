@@ -69,3 +69,9 @@
 - CORS empty origin list combined with `allow_credentials=True` — Starlette silently rejects all cross-origin requests with no diagnostic; pre-existing in config.py
 - `PROCESSING_MAX_RETRIES=0` accepted without validation — tenacity `stop_after_attempt(0)` immediately stops without any attempt; pre-existing in config.py
 - `PROCESSING_BATCH_SIZE=0` causes infinite loop — `while True` loop with `limit=0` fetches zero rows forever; pre-existing in config.py
+
+## Deferred from: code review of 4-4-demo-reset-clean-pipeline-reinitialization (2026-04-08)
+
+- No auth/authorization on destructive admin endpoint — Story 4.3 explicitly added unauthenticated access; not a regression
+- No CSRF protection on state-changing POST — pre-existing CORS configuration concern; demo environment only
+- No rate limiting on mass-delete endpoint — pre-existing infrastructure concern; demo environment only

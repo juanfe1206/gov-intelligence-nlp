@@ -79,7 +79,7 @@ development_status:
   4-1-admin-operations-dashboard-ui: done
   4-2-system-health-check-endpoints-status-indicators: done
   4-3-demo-environment-configuration-unauthenticated-access: done
-  4-4-demo-reset-clean-pipeline-reinitialization: backlog
+  4-4-demo-reset-clean-pipeline-reinitialization: done
   epic-4-retrospective: optional
 
   # Epic 5: Source Connectors (Offline-First Scraping Framework)
