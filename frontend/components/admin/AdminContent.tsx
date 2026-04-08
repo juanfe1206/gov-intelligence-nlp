@@ -23,6 +23,15 @@ interface JobsListResponse {
   total: number
 }
 
+interface ApiHealth {
+  status: 'ok' | 'error' | 'loading'
+}
+
+interface DbHealth {
+  status: 'ok' | 'degraded' | 'error' | 'unknown' | 'loading'
+  db?: 'connected' | 'disconnected'
+}
+
 function formatDateTime(isoString: string): string {
   const date = new Date(isoString)
   return date.toLocaleString('en-US', {
@@ -61,6 +70,8 @@ export default function AdminContent() {
   const [error, setError] = useState<string | null>(null)
   const [retrying, setRetrying] = useState<Set<string>>(new Set())
   const [retryError, setRetryError] = useState<Record<string, string>>({})
+  const [apiHealth, setApiHealth] = useState<ApiHealth>({ status: 'loading' })
+  const [dbHealth, setDbHealth] = useState<DbHealth>({ status: 'loading' })
 
   const fetchJobs = useCallback(async () => {
     setLoading(true)
@@ -80,9 +91,49 @@ export default function AdminContent() {
     }
   }, [])
 
+  const fetchHealth = useCallback(async (signal?: AbortSignal) => {
+    // API health
+    let apiOk = false
+    try {
+      const res = await fetch(`${API_BASE}/health`, { signal })
+      apiOk = res.ok
+      setApiHealth({ status: res.ok ? 'ok' : 'error' })
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        setApiHealth({ status: 'error' })
+      }
+    }
+    // DB health — if API was unreachable, show "Unknown" instead of misleading "Disconnected"
+    try {
+      const res = await fetch(`${API_BASE}/health/db`, { signal })
+      const data = await res.json().catch(() => ({}))
+      if (res.ok && data.status === 'ok') {
+        setDbHealth({ status: 'ok', db: 'connected' })
+      } else if (res.ok) {
+        setDbHealth({ status: 'degraded', db: data.db ?? 'disconnected' })
+      } else {
+        setDbHealth({ status: 'degraded', db: 'disconnected' })
+      }
+    } catch (err) {
+      if ((err as Error).name !== 'AbortError') {
+        setDbHealth({ status: apiOk ? 'error' : 'unknown' })
+      }
+    }
+  }, [])
+
   useEffect(() => {
     fetchJobs()
   }, [fetchJobs])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    fetchHealth(controller.signal)
+    const id = setInterval(() => fetchHealth(controller.signal), 30_000)
+    return () => {
+      controller.abort()
+      clearInterval(id)
+    }
+  }, [fetchHealth])
 
   const handleRetry = useCallback(async (jobId: string) => {
     setRetrying((prev) => new Set(prev).add(jobId))
@@ -176,6 +227,33 @@ export default function AdminContent() {
         <p className="mt-2 text-muted [font-size:var(--font-size-body)] [line-height:var(--line-height-body)]">
           Monitor pipeline health, review job history, and recover from failures.
         </p>
+      </div>
+
+      {/* System Health */}
+      <div className="bg-surface-raised rounded-lg border border-border px-4 py-3">
+        <div className="flex items-center gap-6">
+          <span className={`flex items-center gap-1.5 [font-size:var(--font-size-small)] ${
+            apiHealth.status === 'ok' ? 'text-sentiment-positive' :
+            apiHealth.status === 'error' ? 'text-sentiment-negative' : 'text-muted'
+          }`}>
+            ●
+            <span>
+              {apiHealth.status === 'ok' ? 'API: Operational' :
+               apiHealth.status === 'error' ? 'API: Unavailable' : 'API: Checking…'}
+            </span>
+          </span>
+          <span className={`flex items-center gap-1.5 [font-size:var(--font-size-small)] ${
+            dbHealth.status === 'ok' ? 'text-sentiment-positive' :
+            (dbHealth.status === 'degraded' || dbHealth.status === 'error') ? 'text-sentiment-negative' : 'text-muted'
+          }`}>
+            ●
+            <span>
+              {dbHealth.status === 'ok' ? 'Database: Connected' :
+               (dbHealth.status === 'degraded' || dbHealth.status === 'error') ? 'Database: Disconnected' :
+               dbHealth.status === 'unknown' ? 'Database: Unknown' : 'Database: Checking…'}
+            </span>
+          </span>
+        </div>
       </div>
 
       {/* Source Summary */}

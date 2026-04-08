@@ -52,3 +52,10 @@
 - No auth/authorization guard on admin page or retry endpoint — any user can view admin page and trigger retry; not Story 4.1 scope, Story 4.3 covers unauthenticated access
 - `formatDateTime` returns "Invalid Date" for unparseable ISO strings — only triggered by malformed backend data; pre-existing concern not specific to this change
 - "X total jobs" header can display count larger than displayed list — API defaults to `limit=50`; no pagination in Story 4.1 scope
+
+## Deferred from: code review of 4-2-system-health-check-endpoints-status-indicators.md (2026-04-08)
+
+- Sequential health fetches instead of parallel — `fetchHealth` runs API and DB checks sequentially; `Promise.allSettled` would be more efficient but not a spec violation
+- No timeout on `/health/db` DB connection in production — test/CI config sets timeouts but production does not; a network partition could hang the endpoint indefinitely; deployment config issue
+- Concurrent health-check requests with no deduplication guard — if a prior fetchHealth is still in-flight, the 30s interval fires another; unlikely with fast endpoints but possible with slow DB
+- `DbHealth.db` field stored but never rendered — the `db?: 'connected' | 'disconnected'` property is populated from API but rendering relies solely on `dbHealth.status`; minor unused state

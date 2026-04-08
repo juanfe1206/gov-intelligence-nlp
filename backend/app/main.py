@@ -1,9 +1,12 @@
 """FastAPI application for gov-intelligence-nlp platform."""
 
 from contextlib import asynccontextmanager
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy import text
 
 from app.api.analytics import router as analytics_router
 from app.api.ingestion import router as ingestion_router
@@ -12,6 +15,7 @@ from app.api.processing import router as processing_router
 from app.api.qa import router as qa_router
 from app.api.taxonomy import router as taxonomy_router
 from app.config import settings
+from app.db.session import engine
 from app.taxonomy.loader import load_taxonomy
 
 
@@ -52,7 +56,21 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     """Health check endpoint for monitoring and load balancers."""
-    return {"status": "ok"}
+    return {"status": "ok", "timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/health/db")
+async def health_check_db():
+    """Database connectivity check. Returns 503 if DB is unreachable."""
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return {"status": "ok", "db": "connected"}
+    except Exception:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "degraded", "db": "disconnected"},
+        )
 
 
 @app.get("/")
