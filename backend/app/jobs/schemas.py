@@ -18,6 +18,8 @@ class JobResponse(BaseModel):
     inserted_count: int = Field(0, ge=0, description="Rows/posts successfully inserted")
     skipped_count: int = Field(0, ge=0, description="Rows/posts skipped")
     duplicate_count: int = Field(0, ge=0, description="Duplicate rows or failed posts")
+    normalized_count: int | None = Field(None, description="Records passing normalization (connector jobs only)")
+    failure_category: str | None = Field(None, description="Machine-readable failure category for failed connector runs")
     mode: str | None = Field(None, description="Execution mode: 'live' or 'replay', null for CSV ingestion")
     error_summary: list[str] | None = Field(None, description="List of error messages")
 

@@ -89,6 +89,6 @@ development_status:
   5-1-connector-interface-normalization-contract: done
   5-2-first-platform-connector-offline-first-checkpointing: done
   5-3-replay-mode-deterministic-demo-runs: done
-  5-4-connector-run-observability-retry-failure-taxonomy: backlog
+  5-4-connector-run-observability-retry-failure-taxonomy: done
   5-5-compliance-safety-guardrails-connectors: backlog
   epic-5-retrospective: optional

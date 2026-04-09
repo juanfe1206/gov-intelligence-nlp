@@ -24,4 +24,6 @@ class IngestionJob(Base):
     inserted_count = Column(Integer, default=0)
     skipped_count = Column(Integer, default=0)
     duplicate_count = Column(Integer, default=0)
+    normalized_count = Column(Integer, nullable=True)  # Records passing normalization (connector jobs only)
+    failure_category = Column(String(50), nullable=True)  # Machine-readable failure category for failed connector runs
     error_summary = Column(JSONB, nullable=True)  # List of error messages

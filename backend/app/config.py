@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     PROCESSING_BATCH_SIZE: int = 50
     PROCESSING_MAX_RETRIES: int = 3
 
+    # Connector retry configuration
+    CONNECTOR_MAX_RETRIES: int = 3
+
     @model_validator(mode="after")
     def _ensure_sync_url(self) -> "Settings":
         """Derive DATABASE_SYNC_URL when omitted (useful for CI sqlite)."""

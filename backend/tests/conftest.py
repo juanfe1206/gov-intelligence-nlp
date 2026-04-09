@@ -215,6 +215,8 @@ def _setup_database_schema():
     # Add columns that may be missing if tables were created by an older schema version.
     cur.execute("ALTER TABLE raw_posts ADD COLUMN IF NOT EXISTS external_id VARCHAR(255)")
     cur.execute("ALTER TABLE ingestion_jobs ADD COLUMN IF NOT EXISTS mode VARCHAR(10)")
+    cur.execute("ALTER TABLE ingestion_jobs ADD COLUMN IF NOT EXISTS normalized_count INTEGER")
+    cur.execute("ALTER TABLE ingestion_jobs ADD COLUMN IF NOT EXISTS failure_category VARCHAR(50)")
 
     # Recreate partial unique index if missing (safe to run idempotently).
     cur.execute(

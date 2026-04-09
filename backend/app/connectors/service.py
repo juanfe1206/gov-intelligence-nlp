@@ -10,9 +10,13 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+import asyncio
+
 from app.connectors.interface import BaseConnector
 from app.connectors.schemas import ConnectorRunSummary, NormalizedPost
 from app.connectors.validator import validate_and_normalize
+from app.connectors.errors import ConnectorError, RETRYABLE_CATEGORIES
+from app.config import settings
 from app.models.connector_checkpoint import ConnectorCheckpoint
 from app.models.ingestion_job import IngestionJob
 from app.models.raw_post import RawPost
@@ -67,8 +71,27 @@ async def run_connector(
     )
 
     try:
-        # Fetch raw records from source
-        raw_records = connector.fetch()
+        # Fetch raw records with bounded backoff retry for transient failures
+        retry_delays = [2 ** i for i in range(settings.CONNECTOR_MAX_RETRIES)]  # exponential backoff: 1s, 2s, 4s, ...
+        failure_category: str | None = None
+
+        for attempt, delay in enumerate(retry_delays + [None]):
+            try:
+                raw_records = connector.fetch()
+                failure_category = None  # reset on success — don't leak stale category from a prior transient error
+                break  # success — exit retry loop
+            except ConnectorError as e:
+                failure_category = e.category
+                if e.category not in RETRYABLE_CATEGORIES:
+                    logger.error(f"Non-retryable connector error ({e.category}): {e}")
+                    raise
+                if delay is None:
+                    logger.error(f"Connector fetch exhausted {len(retry_delays)} retries ({e.category}): {e}")
+                    raise
+                logger.warning(
+                    f"Connector fetch failed ({e.category}), retry {attempt + 1}/{len(retry_delays)} in {delay}s: {e}"
+                )
+                await asyncio.sleep(delay)
 
         # Validate and normalize (increments summary.fetched per record)
         posts = validate_and_normalize(connector, raw_records, summary)
@@ -79,8 +102,8 @@ async def run_connector(
         # Set finished_at before persisting so the job record is complete
         summary.finished_at = datetime.now(timezone.utc)
 
-        # Update job with final counts
-        await _persist_connector_job(job_id, summary, status="completed", mode=mode)
+        # Update job with final counts (failure_category is None for success)
+        await _persist_connector_job(job_id, summary, status="completed", mode=mode, failure_category=None)
 
         # Save checkpoint only if we saw records and mode is live (prevent erasing valid checkpoint on empty run)
         checkpoint = connector.checkpoint()
@@ -89,7 +112,8 @@ async def run_connector(
 
     except Exception as e:
         logger.exception(f"Connector run failed: {e}")
-        await _persist_connector_job(job_id, summary, status="failed", mode=mode)
+        fc = failure_category or (e.category if isinstance(e, ConnectorError) else None)
+        await _persist_connector_job(job_id, summary, status="failed", mode=mode, failure_category=fc)
         raise
 
     return summary
@@ -202,6 +226,7 @@ async def _persist_connector_job(
     summary: ConnectorRunSummary,
     status: str,
     mode: str = "live",
+    failure_category: str | None = None,
 ) -> None:
     """Persist connector job record with final status and counts.
 
@@ -213,6 +238,7 @@ async def _persist_connector_job(
         summary: ConnectorRunSummary with final metrics
         status: Final job status ('completed', 'failed', 'partial')
         mode: Execution mode ('live' or 'replay')
+        failure_category: Machine-readable failure category (None for successful runs)
     """
     from app.db.session import async_session_maker
 
@@ -232,10 +258,12 @@ async def _persist_connector_job(
                 status=status,
                 finished_at=summary.finished_at,
                 row_count=summary.fetched,
+                normalized_count=summary.normalized,
                 inserted_count=summary.inserted,
                 skipped_count=summary.rejected,
                 duplicate_count=summary.duplicates,
                 mode=mode,
+                failure_category=failure_category,
                 error_summary=error_summary,
             )
         )

@@ -85,6 +85,16 @@
 - `rollback()` in IntegrityError handler discards prior successful inserts in same batch — pre-existing bug; `session.rollback()` rolls back all uncommitted inserts, causing count mismatches
 - `_after_timestamp` set via private attribute mutation on connector — pre-existing pattern; not part of the BaseConnector interface; fragile if connector implementation changes
 
+## Deferred from: code review of 5-4-connector-run-observability-retry-failure-taxonomy (2026-04-09)
+
+- No length validation on `failure_category` against `String(50)` column — categories are defined in code as short strings; low risk but could cause `StringDataRightTruncation` if a custom category exceeds 50 chars
+- Synchronous `connector.fetch()` blocks event loop during retries — pre-existing concern worsened by retry delays; consider `run_in_executor` for large file reads in a follow-up
+- No jitter on backoff delays — fixed `[1.0, 2.0, 4.0]` pattern could cause thundering herd with concurrent runs; not required by spec given single-connector architecture
+- `duplicate_count = Column(Integer, 0)` malformed positional arg — pre-existing; should be `Column(Integer, default=0)` but not introduced by this change
+- `validation_error` failure category not explicitly supported as a subclass — dev notes explicitly defer this; can be produced via `ConnectorError("msg", category="validation_error")` but not discoverable
+- `_persist_connector_job` uses separate session — pre-existing pattern; if persist fails, original exception is lost
+- `ConnectorError(category=None)` edge case — if `category` is set to `None` on a subclass, `None or self.__class__.category` evaluates correctly; only breaks if subclass sets `category = None` explicitly
+
 ## Deferred from: code review of 4-4-demo-reset-clean-pipeline-reinitialization (2026-04-08)
 
 - No auth/authorization on destructive admin endpoint — Story 4.3 explicitly added unauthenticated access; not a regression

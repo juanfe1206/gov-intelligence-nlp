@@ -38,6 +38,8 @@ def _job_to_response(job: Any) -> JobResponse:
         inserted_count=job.inserted_count or 0,
         skipped_count=job.skipped_count or 0,
         duplicate_count=job.duplicate_count or 0,
+        normalized_count=getattr(job, "normalized_count", None),
+        failure_category=getattr(job, "failure_category", None),
         mode=getattr(job, "mode", None),
         error_summary=error_summary if error_summary else None,
     )
