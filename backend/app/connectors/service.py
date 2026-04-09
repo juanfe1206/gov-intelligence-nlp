@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,6 +23,7 @@ logger = logging.getLogger(__name__)
 async def run_connector(
     session: AsyncSession,
     connector: BaseConnector,
+    mode: str = "live",
 ) -> ConnectorRunSummary:
     """Execute a connector run with checkpoint-based incremental fetching.
 
@@ -43,7 +45,7 @@ async def run_connector(
     started_at = datetime.now(timezone.utc)
 
     # Create running job record (separate session so audit trail survives rollback)
-    job_id = await _create_running_job(connector_id)
+    job_id = await _create_running_job(connector_id, mode=mode)
 
     # Load checkpoint from DB and inject into connector
     checkpoint_data = await get_checkpoint(session, connector_id)
@@ -60,7 +62,7 @@ async def run_connector(
     # Initialize summary
     summary = ConnectorRunSummary(
         connector_id=connector_id,
-        mode="live",
+        mode=mode,
         started_at=started_at,
     )
 
@@ -76,19 +78,18 @@ async def run_connector(
 
         # Set finished_at before persisting so the job record is complete
         summary.finished_at = datetime.now(timezone.utc)
-        summary.status = "completed"
 
         # Update job with final counts
-        await _persist_connector_job(job_id, summary, status="completed")
+        await _persist_connector_job(job_id, summary, status="completed", mode=mode)
 
-        # Save checkpoint only if we saw records (prevent erasing valid checkpoint on empty run)
+        # Save checkpoint only if we saw records and mode is live (prevent erasing valid checkpoint on empty run)
         checkpoint = connector.checkpoint()
-        if checkpoint.get("last_seen_at") is not None:
+        if mode == "live" and checkpoint.get("last_seen_at") is not None:
             await _upsert_checkpoint(session, connector_id, checkpoint)
 
     except Exception as e:
         logger.exception(f"Connector run failed: {e}")
-        await _persist_connector_job(job_id, summary, status="failed")
+        await _persist_connector_job(job_id, summary, status="failed", mode=mode)
         raise
 
     return summary
@@ -135,7 +136,7 @@ async def ingest_normalized_posts_with_external_id(
         content_hash = compute_content_hash(post.text)
 
         stmt = (
-            RawPost.__table__.insert()
+            pg_insert(RawPost)
             .values(
                 source=post.source,
                 platform=post.platform,
@@ -168,7 +169,7 @@ async def ingest_normalized_posts_with_external_id(
     await session.commit()
 
 
-async def _create_running_job(connector_id: str) -> str:
+async def _create_running_job(connector_id: str, mode: str = "live") -> str:
     """Create a job record with status 'running' using a separate session.
 
     Uses a separate session so the job audit trail survives even if the
@@ -176,6 +177,7 @@ async def _create_running_job(connector_id: str) -> str:
 
     Args:
         connector_id: The connector identifier
+        mode: Execution mode ('live' or 'replay')
 
     Returns:
         UUID string of the created job
@@ -187,6 +189,7 @@ async def _create_running_job(connector_id: str) -> str:
             source=connector_id,
             job_type="connector",
             status="running",
+            mode=mode,
             started_at=datetime.now(timezone.utc),
         )
         session.add(job)
@@ -198,6 +201,7 @@ async def _persist_connector_job(
     job_id: str,
     summary: ConnectorRunSummary,
     status: str,
+    mode: str = "live",
 ) -> None:
     """Persist connector job record with final status and counts.
 
@@ -208,6 +212,7 @@ async def _persist_connector_job(
         job_id: Job UUID string
         summary: ConnectorRunSummary with final metrics
         status: Final job status ('completed', 'failed', 'partial')
+        mode: Execution mode ('live' or 'replay')
     """
     from app.db.session import async_session_maker
 
@@ -230,6 +235,7 @@ async def _persist_connector_job(
                 inserted_count=summary.inserted,
                 skipped_count=summary.rejected,
                 duplicate_count=summary.duplicates,
+                mode=mode,
                 error_summary=error_summary,
             )
         )

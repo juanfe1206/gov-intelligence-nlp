@@ -77,6 +77,14 @@
 - No rate limiting or concurrency guard on connector runs — concurrent runs could cause checkpoint race and duplicate ingestion; not in story scope
 - `raw_value` in ValidationError may contain non-serializable objects — unlikely with JSONL-sourced dicts but could fail if raw records contain datetime objects
 
+## Deferred from: code review of 5-3-replay-mode-deterministic-demo-runs (2026-04-09)
+
+- `pg_insert` PostgreSQL-specific in `ingest_normalized_posts_with_external_id` — pre-existing bug fix from this story; not a regression but ties the function to PostgreSQL exclusively
+- Checkpoint not saved on empty live run — pre-existing behavior; combined with `mode == "live"` guard makes the logic harder to reason about but not incorrect
+- `_upsert_checkpoint` commits the shared session independently — pre-existing transaction concern; could cause partial state if checkpoint commit fails after data commit
+- `rollback()` in IntegrityError handler discards prior successful inserts in same batch — pre-existing bug; `session.rollback()` rolls back all uncommitted inserts, causing count mismatches
+- `_after_timestamp` set via private attribute mutation on connector — pre-existing pattern; not part of the BaseConnector interface; fragile if connector implementation changes
+
 ## Deferred from: code review of 4-4-demo-reset-clean-pipeline-reinitialization (2026-04-08)
 
 - No auth/authorization on destructive admin endpoint — Story 4.3 explicitly added unauthenticated access; not a regression

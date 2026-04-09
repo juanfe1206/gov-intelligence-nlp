@@ -151,6 +151,7 @@ def _setup_database_schema():
             id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
             source VARCHAR(255) NOT NULL,
             job_type VARCHAR(50),
+            mode VARCHAR(10),
             status VARCHAR(50) NOT NULL,
             started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             finished_at TIMESTAMP WITH TIME ZONE,
@@ -213,6 +214,7 @@ def _setup_database_schema():
 
     # Add columns that may be missing if tables were created by an older schema version.
     cur.execute("ALTER TABLE raw_posts ADD COLUMN IF NOT EXISTS external_id VARCHAR(255)")
+    cur.execute("ALTER TABLE ingestion_jobs ADD COLUMN IF NOT EXISTS mode VARCHAR(10)")
 
     # Recreate partial unique index if missing (safe to run idempotently).
     cur.execute(

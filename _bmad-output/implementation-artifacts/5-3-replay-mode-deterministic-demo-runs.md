@@ -1,6 +1,6 @@
 # Story 5.3: Replay Mode for Deterministic Demo Runs
 
-Status: ready-for-dev
+Status: done
 
 ## Story
 
@@ -29,15 +29,15 @@ So that demos and tests are reproducible even when live collection is unavailabl
 
 ### Task 1 — DB Migration: Add `mode` column to `ingestion_jobs` (AC: #1, #3)
 
-- [ ] Create `backend/alembic/versions/005_add_connector_mode.py`:
-  - [ ] Add `mode` column to `ingestion_jobs`: `VARCHAR(10) NULLABLE DEFAULT NULL`
-  - [ ] Use idempotent `_has_column` guard pattern from `003_add_processing_columns_and_job_type.py`
-  - [ ] Implement `downgrade()` that drops the column
+- [x] Create `backend/alembic/versions/005_add_connector_mode.py`:
+  - [x] Add `mode` column to `ingestion_jobs`: `VARCHAR(10) NULLABLE DEFAULT NULL`
+  - [x] Use idempotent `_has_column` guard pattern from `003_add_processing_columns_and_job_type.py`
+  - [x] Implement `downgrade()` that drops the column
   - Column purpose: stores `"live"` or `"replay"` for connector jobs; NULL for CSV ingestion jobs
 
 ### Task 2 — Update `IngestionJob` model (AC: #1)
 
-- [ ] In `backend/app/models/ingestion_job.py`, add:
+- [x] In `backend/app/models/ingestion_job.py`, add:
   ```python
   mode = Column(String(10), nullable=True)
   ```
@@ -45,7 +45,7 @@ So that demos and tests are reproducible even when live collection is unavailabl
 
 ### Task 3 — Update `run_connector()` service to accept mode (AC: #1, #3)
 
-- [ ] In `backend/app/connectors/service.py`, update `run_connector()` signature:
+- [x] In `backend/app/connectors/service.py`, update `run_connector()` signature:
   ```python
   async def run_connector(
       session: AsyncSession,
@@ -53,15 +53,15 @@ So that demos and tests are reproducible even when live collection is unavailabl
       mode: str = "live",
   ) -> ConnectorRunSummary:
   ```
-- [ ] Set `summary = ConnectorRunSummary(connector_id=connector_id, mode=mode, started_at=started_at)`
+- [x] Set `summary = ConnectorRunSummary(connector_id=connector_id, mode=mode, started_at=started_at)`
   - Replace the hardcoded `mode="live"` at line ~62
-- [ ] Gate checkpoint upsert on mode: only call `_upsert_checkpoint(...)` when `mode == "live"`
+- [x] Gate checkpoint upsert on mode: only call `_upsert_checkpoint(...)` when `mode == "live"`
   - Existing guard: `if checkpoint.get("last_seen_at") is not None:` — add `and mode == "live"` to this condition
-- [ ] Pass `mode` to `_persist_connector_job()` call and store in `IngestionJob.mode` column
+- [x] Pass `mode` to `_persist_connector_job()` call and store in `IngestionJob.mode` column
 
 ### Task 4 — Update `_persist_connector_job()` to store mode (AC: #1)
 
-- [ ] In `backend/app/connectors/service.py`, update `_persist_connector_job()` signature:
+- [x] In `backend/app/connectors/service.py`, update `_persist_connector_job()` signature:
   ```python
   async def _persist_connector_job(
       job_id: str,
@@ -70,19 +70,19 @@ So that demos and tests are reproducible even when live collection is unavailabl
       mode: str = "live",
   ) -> None:
   ```
-- [ ] Add `mode=mode` to the `update(IngestionJob).values(...)` call
+- [x] Add `mode=mode` to the `update(IngestionJob).values(...)` call
 
 ### Task 5 — Update `_create_running_job()` to store mode (AC: #1)
 
-- [ ] Update `_create_running_job()` signature:
+- [x] Update `_create_running_job()` signature:
   ```python
   async def _create_running_job(connector_id: str, mode: str = "live") -> str:
   ```
-- [ ] Add `mode=mode` to `IngestionJob(...)` constructor
+- [x] Add `mode=mode` to `IngestionJob(...)` constructor
 
 ### Task 6 — Update API endpoint to accept `mode` in request body (AC: #1, #3)
 
-- [ ] In `backend/app/api/connectors.py`, update `ConnectorRunRequest`:
+- [x] In `backend/app/api/connectors.py`, update `ConnectorRunRequest`:
   ```python
   from typing import Literal
   
@@ -90,7 +90,7 @@ So that demos and tests are reproducible even when live collection is unavailabl
       file_path: str | None = None
       mode: Literal["live", "replay"] = "live"
   ```
-- [ ] Pass mode to `run_connector()`:
+- [x] Pass mode to `run_connector()`:
   ```python
   mode = body.mode if body else "live"
   summary = await run_connector(session, connector, mode=mode)
@@ -98,13 +98,13 @@ So that demos and tests are reproducible even when live collection is unavailabl
 
 ### Task 7 — Tests (AC: #1, #2, #3)
 
-- [ ] Create `backend/tests/connectors/test_replay_mode.py`:
-  - [ ] **Test replay runs same normalization path**: POST with `mode="replay"`, verify summary has `mode="replay"` and inserted/normalized counts match live equivalent
-  - [ ] **Test replay does NOT update checkpoint**: After a replay run, assert `get_checkpoint()` returns the same checkpoint as before
-  - [ ] **Test live run still works after replay**: After a replay run, a live run still uses and updates the checkpoint correctly
-  - [ ] **Test replay deduplication**: Replay the same payload twice; second replay shows `duplicates > 0` and `inserted == 0`
-  - [ ] **Test replay on empty file**: Replay with JSONL with 0 records → summary shows `fetched=0, inserted=0, mode="replay"`
-  - [ ] Use `tmp_path` fixture for test JSONL files; mock DB session following pattern in `test_connector_service.py`
+- [x] Create `backend/tests/connectors/test_replay_mode.py`:
+  - [x] **Test replay runs same normalization path**: POST with `mode="replay"`, verify summary has `mode="replay"` and inserted/normalized counts match live equivalent
+  - [x] **Test replay does NOT update checkpoint**: After a replay run, assert `get_checkpoint()` returns the same checkpoint as before
+  - [x] **Test live run still works after replay**: After a replay run, a live run still uses and updates the checkpoint correctly
+  - [x] **Test replay deduplication**: Replay the same payload twice; second replay shows `duplicates > 0` and `inserted == 0`
+  - [x] **Test replay on empty file**: Replay with JSONL with 0 records → summary shows `fetched=0, inserted=0, mode="replay"`
+  - [x] Use `tmp_path` fixture for test JSONL files; mock DB session following pattern in `test_connector_service.py`
 
 ## Dev Notes
 
@@ -227,21 +227,44 @@ backend/tests/connectors/test_replay_mode.py
 ## Dev Agent Record
 
 ### Agent Model Used
-
-_to be filled by dev agent_
+Claude Code (Claude Opus 4.6)
 
 ### Debug Log References
-
-_to be filled by dev agent_
+- Original issue: `on_conflict_do_nothing` attribute error when using generic `Insert` object - fixed by importing `pg_insert` from `sqlalchemy.dialects.postgresql`
+- Original issue: `summary.status = "completed"` failed because `ConnectorRunSummary` is a Pydantic model without `status` field - removed this line
 
 ### Completion Notes List
-
-_to be filled by dev agent_
+- Implemented replay mode for deterministic demo runs
+- Added `mode` parameter to `run_connector()`, `_create_running_job()`, and `_persist_connector_job()`
+- Gated checkpoint updates on `mode == "live"` to prevent replay from corrupting checkpoints
+- Fixed pre-existing bug: `on_conflict_do_nothing` requires PostgreSQL-specific insert
+- Fixed pre-existing bug: `ConnectorRunSummary` doesn't have `status` field (Pydantic model vs dataclass confusion)
 
 ### File List
+- Created: `backend/alembic/versions/005_add_connector_mode.py`
+- Created: `backend/tests/connectors/test_replay_mode.py`
+- Modified: `backend/app/connectors/service.py` (added mode parameter, fixed insert, removed summary.status)
+- Modified: `backend/app/connectors/schemas.py` (no changes - schema already had mode field)
+- Modified: `backend/app/models/ingestion_job.py` (added mode column)
+- Modified: `backend/app/api/connectors.py` (added mode to ConnectorRunRequest)
+- Modified: `backend/tests/connectors/test_connector_service.py` (fixed pre-existing test query pattern)
+- Modified: `backend/tests/conftest.py` (added mode column to test schema)
 
-_to be filled by dev agent_
+### Review Findings
+
+- [x] [Review][Patch] `mode` not exposed in `JobResponse` schema [`backend/app/jobs/schemas.py` + `backend/app/api/jobs.py`] — Added `mode: str | None = None` to `JobResponse` and mapped it in `_job_to_response`.
+
+- [x] [Review][Patch] Test `test_replay_mode_stored_in_job` potential transaction isolation flakiness [`backend/tests/connectors/test_replay_mode.py`:166-168] — Added `await async_db_session.expire_all()` before querying IngestionJob to ensure committed data from separate sessions is visible.
+
+- [x] [Review][Defer] `pg_insert` PostgreSQL-specific in `ingest_normalized_posts_with_external_id` [`backend/app/connectors/service.py`:139] — deferred, pre-existing bug fix
+- [x] [Review][Defer] Checkpoint not saved on empty live run — deferred, pre-existing behavior
+- [x] [Review][Defer] `_upsert_checkpoint` commits the shared session — deferred, pre-existing transaction concern
+- [x] [Review][Defer] `rollback()` in IntegrityError handler discards prior successful inserts in same batch [`backend/app/connectors/service.py`:166] — deferred, pre-existing bug
+- [x] [Review][Defer] `_after_timestamp` set via private attribute mutation [`backend/app/connectors/service.py`:57] — deferred, pre-existing pattern
 
 ### Change Log
-
-_to be filled by dev agent_
+- 2026-04-09: Story 5-3 implementation complete - replay mode for deterministic demo runs
+  - Added mode parameter to run_connector() and related functions
+  - Fixed pre-existing bugs: PostgreSQL insert pattern, summary.status field
+  - All tests passing (7/7 in test_connector_service.py, 6/6 in test_replay_mode.py)
+- 2026-04-09: Code review — 1 decision-needed, 1 patch, 5 deferred, 9 dismissed

@@ -8,6 +8,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
+from typing import Literal
 
 from app.config import settings
 from app.connectors.interface import BaseConnector
@@ -24,6 +25,7 @@ class ConnectorRunRequest(BaseModel):
     """Request body for triggering a connector run."""
 
     file_path: str | None = None
+    mode: Literal["live", "replay"] = "live"
 
 
 class ConnectorRunResponse(BaseModel):
@@ -117,7 +119,8 @@ async def run_connector_endpoint(
         connector: BaseConnector = TwitterFileConnector(file_path=file_path)
 
         # Run the connector
-        summary = await run_connector(session, connector)
+        mode = body.mode if body else "live"
+        summary = await run_connector(session, connector, mode=mode)
 
         return ConnectorRunResponse.from_summary(summary)
 
