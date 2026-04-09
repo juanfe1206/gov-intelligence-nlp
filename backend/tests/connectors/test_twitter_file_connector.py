@@ -165,15 +165,15 @@ class TestTwitterFileConnector:
         assert result.created_at.tzinfo is not None
 
     def test_parse_twitter_date_with_missing_value(self, tmp_path):
-        """Test parsing raises ValueError for empty/None date."""
+        """Test normalize returns None when created_at is missing."""
         test_file = tmp_path / "test.jsonl"
         test_file.write_text('{"id": "1", "full_text": "Test"}')
 
         connector = TwitterFileConnector(file_path=str(test_file))
         raw = connector.fetch()[0]
 
-        with pytest.raises(ValueError):
-            connector.normalize(raw)
+        result = connector.normalize(raw)
+        assert result is None
 
     def test_normalize_tracks_max_timestamp(self, tmp_path):
         """Test that _last_seen_at tracks the maximum timestamp seen."""

@@ -1,10 +1,12 @@
 """Connector service layer for managing connector runs and checkpoints."""
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import func, select, update
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.connectors.interface import BaseConnector
@@ -25,7 +27,7 @@ async def run_connector(
 
     This function orchestrates the full connector workflow:
     1. Load checkpoint from DB
-    2. Instantiate connector with checkpoint cutoff
+    2. Inject checkpoint cutoff into connector via constructor param
     3. Fetch and normalize records
     4. Ingest into raw_posts with deduplication
     5. Save new checkpoint
@@ -40,21 +42,11 @@ async def run_connector(
     connector_id = connector.connector_id
     started_at = datetime.now(timezone.utc)
 
-    # Create running job record
-    job = IngestionJob(
-        source=connector_id,
-        job_type="connector",
-        status="running",
-        started_at=started_at,
-    )
-    session.add(job)
-    await session.commit()
-    job_id = str(job.id)
+    # Create running job record (separate session so audit trail survives rollback)
+    job_id = await _create_running_job(connector_id)
 
-    # Load checkpoint from DB
+    # Load checkpoint from DB and inject into connector
     checkpoint_data = await get_checkpoint(session, connector_id)
-
-    # Inject checkpoint cutoff into connector for incremental fetching
     if checkpoint_data and checkpoint_data.get("last_seen_at"):
         from datetime import datetime as dt
         last_seen_str = checkpoint_data["last_seen_at"]
@@ -75,27 +67,28 @@ async def run_connector(
     try:
         # Fetch raw records from source
         raw_records = connector.fetch()
-        summary.fetched = len(raw_records)
 
-        # Validate and normalize
+        # Validate and normalize (increments summary.fetched per record)
         posts = validate_and_normalize(connector, raw_records, summary)
 
         # Ingest with external_id support
         await ingest_normalized_posts_with_external_id(session, posts, summary)
 
-        # Update job with final counts
-        await _persist_connector_job(session, job_id, summary, status="completed")
-
-        # Save checkpoint (max timestamp seen in this run)
-        checkpoint = connector.checkpoint()
-        await _upsert_checkpoint(session, connector_id, checkpoint)
-
+        # Set finished_at before persisting so the job record is complete
         summary.finished_at = datetime.now(timezone.utc)
         summary.status = "completed"
 
+        # Update job with final counts
+        await _persist_connector_job(job_id, summary, status="completed")
+
+        # Save checkpoint only if we saw records (prevent erasing valid checkpoint on empty run)
+        checkpoint = connector.checkpoint()
+        if checkpoint.get("last_seen_at") is not None:
+            await _upsert_checkpoint(session, connector_id, checkpoint)
+
     except Exception as e:
         logger.exception(f"Connector run failed: {e}")
-        await _persist_connector_job(session, job_id, summary, status="failed")
+        await _persist_connector_job(job_id, summary, status="failed")
         raise
 
     return summary
@@ -127,8 +120,9 @@ async def ingest_normalized_posts_with_external_id(
 ) -> None:
     """Ingest normalized posts with external_id for platform deduplication.
 
-    Uses the partial unique index (platform, external_id) for secondary deduplication
-    alongside the existing content_hash-based primary deduplication.
+    Uses content_hash-based primary deduplication via on_conflict_do_nothing.
+    The partial unique index (platform, external_id) provides secondary DB-level
+    protection — IntegrityError from it is caught and treated as a duplicate.
 
     Args:
         session: Async SQLAlchemy session
@@ -151,7 +145,6 @@ async def ingest_normalized_posts_with_external_id(
                 author=post.author,
                 created_at=post.created_at,
                 metadata_={
-                    "external_id": post.external_id,
                     "raw_payload": post.raw_payload,
                 },
             )
@@ -161,46 +154,86 @@ async def ingest_normalized_posts_with_external_id(
             .returning(RawPost.id)
         )
 
-        result = await session.execute(stmt)
-        if result.scalar_one_or_none():
-            summary.inserted += 1
-        else:
+        try:
+            result = await session.execute(stmt)
+            if result.scalar_one_or_none():
+                summary.inserted += 1
+            else:
+                summary.duplicates += 1
+        except IntegrityError:
+            # Secondary dedup: partial unique index (platform, external_id) violation
+            await session.rollback()
             summary.duplicates += 1
 
     await session.commit()
 
 
+async def _create_running_job(connector_id: str) -> str:
+    """Create a job record with status 'running' using a separate session.
+
+    Uses a separate session so the job audit trail survives even if the
+    main transaction rolls back.
+
+    Args:
+        connector_id: The connector identifier
+
+    Returns:
+        UUID string of the created job
+    """
+    from app.db.session import async_session_maker
+
+    async with async_session_maker() as session:
+        job = IngestionJob(
+            source=connector_id,
+            job_type="connector",
+            status="running",
+            started_at=datetime.now(timezone.utc),
+        )
+        session.add(job)
+        await session.commit()
+        return str(job.id)
+
+
 async def _persist_connector_job(
-    session: AsyncSession,
     job_id: str,
     summary: ConnectorRunSummary,
     status: str,
 ) -> None:
     """Persist connector job record with final status and counts.
 
+    Uses a separate session so the job record update is independent
+    of the main connector transaction.
+
     Args:
-        session: Async SQLAlchemy session
         job_id: Job UUID string
         summary: ConnectorRunSummary with final metrics
         status: Final job status ('completed', 'failed', 'partial')
     """
-    from sqlalchemy import update
-    from sqlalchemy.dialects.postgresql import JSONB
+    from app.db.session import async_session_maker
 
-    await session.execute(
-        update(IngestionJob)
-        .where(IngestionJob.id == job_id)
-        .values(
-            status=status,
-            finished_at=summary.finished_at,
-            row_count=summary.fetched,
-            inserted_count=summary.inserted,
-            skipped_count=summary.rejected,
-            duplicate_count=summary.duplicates,
-            error_summary=summary.validation_errors if summary.validation_errors else None,
+    # Serialize ValidationError dataclasses to dicts for JSONB storage
+    error_summary = None
+    if summary.validation_errors:
+        error_summary = [
+            {"field": e.field, "message": e.message, "raw_value": e.raw_value}
+            for e in summary.validation_errors
+        ]
+
+    async with async_session_maker() as session:
+        await session.execute(
+            update(IngestionJob)
+            .where(IngestionJob.id == job_id)
+            .values(
+                status=status,
+                finished_at=summary.finished_at,
+                row_count=summary.fetched,
+                inserted_count=summary.inserted,
+                skipped_count=summary.rejected,
+                duplicate_count=summary.duplicates,
+                error_summary=error_summary,
+            )
         )
-    )
-    await session.commit()
+        await session.commit()
 
 
 async def _upsert_checkpoint(

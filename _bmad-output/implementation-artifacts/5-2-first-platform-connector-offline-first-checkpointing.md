@@ -1,6 +1,6 @@
 # Story 5.2: First Platform Connector (Offline-First + Checkpointing)
 
-Status: review
+Status: done
 
 ## Story
 
@@ -311,6 +311,32 @@ claude-sonnet-4-6
 - `backend/app/config.py` - added `CONNECTOR_TWITTER_FILE_PATH`
 - `backend/app/main.py` - registered connectors router
 - `backend/app/models/__init__.py` - exported `ConnectorCheckpoint`
+
+### Review Findings
+
+**Decision Needed:**
+
+- [x] [Review][Decision] Boundary timestamp filtering uses `>=` — resolved: changed `>` to `>=` in `twitter_file.py`. Re-processes boundary records; dedup handles any duplicates.
+- [x] [Review][Decision] Partial unique index IntegrityError — resolved: catch `IntegrityError` in `ingest_normalized_posts_with_external_id` and treat as duplicate.
+
+**Patch:**
+
+- [x] [Review][Patch] Duplicate checkpoint injection & private attribute mutation — removed dead checkpoint-loading code from API endpoint; service.py still sets `_after_timestamp` (will refactor to constructor param in follow-up).
+- [x] [Review][Patch] `_parse_twitter_date` naive datetime + dead code — fixed to return UTC-aware datetimes for all formats; removed dead `if parsed.tzinfo is None` branch.
+- [x] [Review][Patch] Redundant `external_id` in `metadata_` dict — removed from `service.py`'s `ingest_normalized_posts_with_external_id`.
+- [x] [Review][Patch] Double `fetched` count — removed `summary.fetched = len(raw_records)` from `service.py`; `validate_and_normalize` already increments per record.
+- [x] [Review][Patch] ValidationError not JSON-serializable — `_persist_connector_job` now serializes to dicts before JSONB storage.
+- [x] [Review][Patch] Empty run erases checkpoint — checkpoint upsert now skipped when `last_seen_at` is `None`.
+- [x] [Review][Patch] `finished_at` persisted as None — moved `finished_at` assignment before `_persist_connector_job` call.
+- [x] [Review][Patch] Path traversal protection — added validation that user-supplied `file_path` must be within the configured data directory.
+- [x] [Review][Patch] Multiple session commits — job creation and persistence now use separate `async_session_maker()` sessions following the ingestion service pattern.
+
+**Deferred:**
+
+- [x] [Review][Defer] No authentication/authorization on connector run endpoint — deferred, demo environment uses unauthenticated access per Story 4-3
+- [x] [Review][Defer] Synchronous `fetch()` blocks the event loop — deferred, optimization concern not in story scope
+- [x] [Review][Defer] No rate limiting or concurrency guard on connector runs — deferred, not in story scope
+- [x] [Review][Defer] `raw_value` in ValidationError may contain non-serializable objects — deferred, unlikely with JSONL data
 
 ### Change Log
 

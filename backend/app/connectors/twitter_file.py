@@ -1,7 +1,7 @@
 """Twitter file connector - reads posts from a JSONL file for offline-first ingestion."""
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -66,7 +66,7 @@ class TwitterFileConnector(BaseConnector):
         if self._after_timestamp is not None:
             records = [
                 r for r in records
-                if self._parse_twitter_date(r.get("created_at", "")) > self._after_timestamp
+                if self._parse_twitter_date(r.get("created_at", "")) >= self._after_timestamp
             ]
 
         return records
@@ -148,15 +148,11 @@ class TwitterFileConnector(BaseConnector):
         twitter_format = "%a %b %d %H:%M:%S %z %Y"
         try:
             parsed = datetime.strptime(value, twitter_format)
-            # Ensure UTC timezone
-            if parsed.tzinfo is None:
-                parsed = parsed.replace(tzinfo=None)
-            return parsed.astimezone(parsed.tzinfo or None)
+            return parsed.astimezone(timezone.utc)
         except ValueError:
             pass
 
         # Fallback: try ISO 8601 formats (existing ingestion logic)
-        # This mirrors _parse_timestamp from ingestion/service.py
         value_stripped = value.strip()
 
         # Handle 'Z' suffix
@@ -177,7 +173,8 @@ class TwitterFileConnector(BaseConnector):
             try:
                 parsed = datetime.strptime(value_stripped, fmt)
                 if parsed.tzinfo is None:
-                    return parsed.replace(tzinfo=None)
+                    # Default naive datetimes to UTC (consistent with ingestion service)
+                    return parsed.replace(tzinfo=timezone.utc)
                 return parsed
             except ValueError:
                 continue

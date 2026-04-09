@@ -70,6 +70,13 @@
 - `PROCESSING_MAX_RETRIES=0` accepted without validation — tenacity `stop_after_attempt(0)` immediately stops without any attempt; pre-existing in config.py
 - `PROCESSING_BATCH_SIZE=0` causes infinite loop — `while True` loop with `limit=0` fetches zero rows forever; pre-existing in config.py
 
+## Deferred from: code review of 5-2-first-platform-connector-offline-first-checkpointing (2026-04-09)
+
+- No authentication/authorization on connector run endpoint — demo environment uses unauthenticated access per Story 4-3; not a regression
+- Synchronous `fetch()` blocks the event loop — optimization concern, not in story scope; consider `run_in_executor` for large files in a follow-up
+- No rate limiting or concurrency guard on connector runs — concurrent runs could cause checkpoint race and duplicate ingestion; not in story scope
+- `raw_value` in ValidationError may contain non-serializable objects — unlikely with JSONL-sourced dicts but could fail if raw records contain datetime objects
+
 ## Deferred from: code review of 4-4-demo-reset-clean-pipeline-reinitialization (2026-04-08)
 
 - No auth/authorization on destructive admin endpoint — Story 4.3 explicitly added unauthenticated access; not a regression

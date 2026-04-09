@@ -2,6 +2,7 @@
 
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -10,7 +11,7 @@ from pydantic import BaseModel
 
 from app.config import settings
 from app.connectors.interface import BaseConnector
-from app.connectors.service import get_checkpoint, run_connector
+from app.connectors.service import run_connector
 from app.connectors.schemas import ConnectorRunSummary
 from app.connectors.twitter_file import TwitterFileConnector
 from app.db.session import get_db
@@ -100,21 +101,20 @@ async def run_connector_endpoint(
     # Resolve file_path
     file_path = body.file_path if body and body.file_path else settings.CONNECTOR_TWITTER_FILE_PATH
 
+    # Validate file_path to prevent path traversal
+    resolved = Path(file_path).resolve()
+    if body and body.file_path:
+        # When user provides a custom path, ensure it doesn't escape the project data directory
+        allowed_root = Path(settings.CONNECTOR_TWITTER_FILE_PATH).resolve().parent
+        if not str(resolved).startswith(str(allowed_root)):
+            raise HTTPException(
+                status_code=400,
+                detail={"message": "file_path must be within the configured data directory"},
+            )
+
     try:
-        # Instantiate connector
+        # Instantiate connector (checkpoint is loaded inside run_connector)
         connector: BaseConnector = TwitterFileConnector(file_path=file_path)
-
-        # Load checkpoint to inject into connector
-        checkpoint_data = await get_checkpoint(session, connector_id)
-        if checkpoint_data and checkpoint_data.get("last_seen_at"):
-            from datetime import datetime as dt
-
-            last_seen_str = checkpoint_data["last_seen_at"]
-            try:
-                last_seen = dt.fromisoformat(last_seen_str.replace("Z", "+00:00"))
-                connector._after_timestamp = last_seen
-            except ValueError as e:
-                logger.warning(f"Could not parse checkpoint timestamp: {e}")
 
         # Run the connector
         summary = await run_connector(session, connector)

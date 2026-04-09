@@ -165,7 +165,6 @@ UX-DR16: Implement a reusable shell layout (left nav + top header + flexible mai
 | Growth-G1 | Epic 5 | Offline-first source connectors framework in codebase |
 | Growth-G2 | Epic 5 | One platform connector with checkpointing and replay mode |
 | Growth-G3 | Epic 5 | Connector observability, retries, and compliance guardrails |
-| Growth-G4 | Epic 5 | Admin on-demand connector fetch (manual trigger; updates raw store; no scheduler) |
 
 ## Epic List
 
@@ -190,7 +189,7 @@ Admin and technical owners can monitor ingestion health, view job status and err
 
 ### Epic 5: Source Connectors (Offline-First Scraping Framework)
 Technical owners can run source-collection code from this repository (without requiring always-live scraping), normalize payloads into a stable ingestion contract, replay captured payloads for deterministic runs, and monitor connector health and failures without destabilizing core analytics and Q&A delivery.
-**FRs covered:** Extends FR1, FR2, FR23, FR24, FR26 and post-MVP multi-platform ingestion goals (Growth Features); Growth-G4 adds an operator-facing manual fetch path.
+**FRs covered:** Extends FR1, FR2, FR23, FR24, FR26 and post-MVP multi-platform ingestion goals (Growth Features)
 **Scope guardrail:** Start with one connector end-to-end and require replay mode parity before any additional platform connector work.
 
 ---
@@ -882,30 +881,3 @@ So that collection code can be used responsibly in classroom/demo environments.
 **When** the connector is enabled
 **Then** a connector metadata file documents permitted collection scope and operational limits
 **And** the run command enforces configured max request/page limits to prevent accidental over-collection
-
----
-
-### Story 5.6: Admin On-Demand Connector Fetch (Manual Trigger)
-
-As an admin or technical owner,
-I want a simple admin action to run a connector once and load new raw posts into the database,
-So that I can refresh data on demand without continuous background scraping or scheduled jobs.
-
-**Acceptance Criteria:**
-
-**Given** at least one connector is available and the connector run API exists (Story 5.2)
-**When** the admin uses the documented admin UI control (for example a “Run connector” / “Fetch” action) for a selected connector
-**Then** the UI invokes the same on-demand connector execution path used by `POST /connectors/{connector_id}/run` (or wraps it)
-**And** the UI displays a run result summary consistent with the connector response (success vs failure, fetched / inserted / skipped / duplicate counts, and validation errors at a high level)
-
-**Given** a connector run completes successfully
-**When** the operator inspects raw ingestion outcomes (admin view, API, or documented verification steps)
-**Then** newly inserted raw posts are present in the database for the configured source
-**And** the story does not require automatic NLP processing; triggering `POST /process` remains a separate explicit step unless already combined elsewhere by product choice
-
-**Given** the product owner wants predictable demo behavior
-**When** this story is implemented
-**Then** connector execution is **only** triggered by an explicit user/admin action (or an equivalent documented manual invocation)
-**And** out of scope for this story: interval schedulers, daemons, polling loops, websocket push, and “live updating” dashboards driven by background fetch jobs
-
-**Prerequisites:** Story 5.2 complete (connector run + checkpointing + raw persistence). Story 5.4 may enrich the same summary data in the UI but is not a hard prerequisite for a minimal fetch control.
