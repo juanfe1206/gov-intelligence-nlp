@@ -171,11 +171,22 @@ def _setup_database_schema():
             platform VARCHAR(100) NOT NULL,
             original_text TEXT NOT NULL,
             content_hash VARCHAR(64),
+            external_id VARCHAR(255),
             author VARCHAR(255),
             created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             metadata JSONB,
             ingested_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
             UNIQUE(source, content_hash)
+        )
+    """
+    )
+
+    cur.execute(
+        """
+        CREATE TABLE IF NOT EXISTS connector_checkpoints (
+            connector_id VARCHAR(255) PRIMARY KEY,
+            checkpoint_data JSONB NOT NULL,
+            updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
         )
     """
     )
@@ -200,9 +211,21 @@ def _setup_database_schema():
     """
     )
 
+    # Add columns that may be missing if tables were created by an older schema version.
+    cur.execute("ALTER TABLE raw_posts ADD COLUMN IF NOT EXISTS external_id VARCHAR(255)")
+
+    # Recreate partial unique index if missing (safe to run idempotently).
+    cur.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_raw_posts_platform_external_id
+        ON raw_posts (platform, external_id)
+        WHERE external_id IS NOT NULL
+    """
+    )
+
     # Ensure a clean test slate without destructive DDL.
     cur.execute(
-        "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
+        "TRUNCATE TABLE connector_checkpoints, ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
     )
 
     cur.close()
@@ -226,7 +249,7 @@ def _truncate_test_tables():
     conn.autocommit = True
     cur = conn.cursor()
     cur.execute(
-        "TRUNCATE TABLE ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
+        "TRUNCATE TABLE connector_checkpoints, ingestion_jobs, raw_posts, processed_posts RESTART IDENTITY CASCADE"
     )
     cur.close()
     conn.close()

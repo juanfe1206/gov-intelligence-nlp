@@ -1,7 +1,7 @@
 # generated: 2026-04-06
 # last_updated: 2026-04-09
 
-# Story 5-2 completed - code review patches applied
+# Story 5-3 ready-for-dev - replay mode story created
 # project: gov-intelligence-nlp
 # project_key: NOKEY
 # tracking_system: file-system
@@ -88,7 +88,7 @@ development_status:
   epic-5: in-progress
   5-1-connector-interface-normalization-contract: done
   5-2-first-platform-connector-offline-first-checkpointing: done
-  5-3-replay-mode-deterministic-demo-runs: backlog
+  5-3-replay-mode-deterministic-demo-runs: ready-for-dev
   5-4-connector-run-observability-retry-failure-taxonomy: backlog
   5-5-compliance-safety-guardrails-connectors: backlog
   epic-5-retrospective: optional
