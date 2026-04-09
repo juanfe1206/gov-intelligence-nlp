@@ -26,13 +26,73 @@ python -m venv .venv
 # macOS/Linux:
 # source .venv/bin/activate
 pip install -r requirements.txt
+alembic upgrade head
 uvicorn app.main:app --reload
 ```
 Backend API at http://localhost:8000
 API docs at http://localhost:8000/docs
 
+> `alembic upgrade head` is required before running connector and jobs endpoints.
+
 ### Environment Variables
 Copy `.env.example` to `.env` and configure your database URL and API keys.
+
+## Data Ingestion Workflow (Epic 5)
+
+This repo includes an offline-first connector that reads a local Twitter/X JSONL file and ingests it into `raw_posts`.
+
+### 1) Prepare Connector Input File
+
+- Default path: `backend/data/twitter_posts.jsonl`
+- Configure via `CONNECTOR_TWITTER_FILE_PATH` in `backend/.env`
+- Optional cap per run: `CONNECTOR_TWITTER_MAX_RECORDS`
+
+Each line in the JSONL file must be a JSON object, for example:
+
+```json
+{"id":"123","id_str":"123","full_text":"[PSOE] ... [ECONOMIA] ...","text":"[PSOE] ... [ECONOMIA] ...","user":{"screen_name":"demo_user"},"author":"demo_user","created_at":"Thu Apr 01 12:00:00 +0000 2021","lang":"es"}
+```
+
+### 2) Run Connector Ingestion
+
+Start backend first, then trigger:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/connectors/twitter-file/run" \
+  -H "Content-Type: application/json" \
+  -d '{"mode":"live"}'
+```
+
+PowerShell equivalent:
+
+```powershell
+Invoke-RestMethod -Method POST `
+  -Uri "http://127.0.0.1:8000/connectors/twitter-file/run" `
+  -ContentType "application/json" `
+  -Body '{"mode":"live"}'
+```
+
+### 3) Run NLP Processing
+
+Connector ingestion populates `raw_posts`. To populate `processed_posts` (used by analytics and Q&A), trigger processing:
+
+```bash
+curl -X POST "http://127.0.0.1:8000/process?batch_size=50"
+```
+
+PowerShell equivalent:
+
+```powershell
+Invoke-RestMethod -Method POST -Uri "http://127.0.0.1:8000/process?batch_size=50"
+```
+
+### 4) Verify Runs
+
+- API: `GET /jobs?job_type=connector&limit=5`
+- API: `GET /jobs?job_type=process&limit=5`
+- DB checks:
+  - `SELECT COUNT(*) FROM raw_posts;`
+  - `SELECT COUNT(*) FROM processed_posts;`
 
 ---
 
@@ -74,6 +134,7 @@ NEXT_PUBLIC_API_BASE_URL=http://192.168.1.42:8000
 **Backend** (from project root, `backend/` directory):
 ```bash
 cd backend
+alembic upgrade head
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 ```
 Note: `--host 0.0.0.0` is required for network access from other devices. Omit `--reload` for stable demo runs — it adds overhead and can restart the server if files change mid-demo.
