@@ -66,6 +66,7 @@ poetry.toml
 *.tsv
 data/
 datasets/
+!backend/data
 
 # Models / embeddings / checkpoints
 models/
