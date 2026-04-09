@@ -163,7 +163,7 @@ class TestReplayMode:
 
         # Verify job was created with correct mode
         # Expire the session cache so we see committed data from separate sessions
-        await async_db_session.expire_all()
+        async_db_session.expire_all()
         # Query the latest job using SQLAlchemy select
         stmt = select(IngestionJob).order_by(IngestionJob.started_at.desc()).limit(1)
         result = await async_db_session.execute(stmt)
