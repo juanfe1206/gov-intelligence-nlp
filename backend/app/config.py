@@ -37,15 +37,16 @@ class Settings(BaseSettings):
 
     # Connector configuration
     CONNECTOR_TWITTER_FILE_PATH: str = "data/twitter_posts.jsonl"
+    CONNECTOR_TWITTER_MAX_RECORDS: int = 0  # Max records per run; 0 = no limit
+
+    # Connector retry configuration
+    CONNECTOR_MAX_RETRIES: int = 3
 
     # Processing configuration
     OPENAI_CHAT_MODEL: str = "gpt-4o-mini"
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     PROCESSING_BATCH_SIZE: int = 50
     PROCESSING_MAX_RETRIES: int = 3
-
-    # Connector retry configuration
-    CONNECTOR_MAX_RETRIES: int = 3
 
     @model_validator(mode="after")
     def _ensure_sync_url(self) -> "Settings":

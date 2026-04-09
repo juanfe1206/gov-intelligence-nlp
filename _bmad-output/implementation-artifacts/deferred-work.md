@@ -95,6 +95,11 @@
 - `_persist_connector_job` uses separate session — pre-existing pattern; if persist fails, original exception is lost
 - `ConnectorError(category=None)` edge case — if `category` is set to `None` on a subclass, `None or self.__class__.category` evaluates correctly; only breaks if subclass sets `category = None` explicitly
 
+## Deferred from: code review of 5-5-compliance-safety-guardrails-connectors (2026-04-09)
+
+- max_records truncates after full file read — no memory protection: `fetch()` reads entire JSONL into memory, then truncates. max_records caps output, not processing cost. Pre-existing architectural limitation from Story 5-2.
+- summary.fetched underreports after truncation: `validator.py` counts post-truncation records; operator can't detect silent drops. Pre-existing limitation of how validator counts.
+
 ## Deferred from: code review of 4-4-demo-reset-clean-pipeline-reinitialization (2026-04-08)
 
 - No auth/authorization on destructive admin endpoint — Story 4.3 explicitly added unauthenticated access; not a regression

@@ -22,16 +22,21 @@ class TwitterFileConnector(BaseConnector):
 
     connector_id = "twitter-file"
 
-    def __init__(self, file_path: str, after_timestamp: datetime | None = None):
+    def __init__(self, file_path: str, after_timestamp: datetime | None = None, max_records: int = 0):
         """Initialize the connector.
 
         Args:
             file_path: Path to the JSONL file containing Twitter posts
             after_timestamp: Optional cutoff timestamp - records with created_at <= this
                             will be skipped during incremental runs
+            max_records: Maximum records to return per fetch(); 0 = no limit.
+                        Enforces operational limits to prevent accidental over-collection.
         """
         self._file_path = Path(file_path)
         self._after_timestamp = after_timestamp
+        if max_records < 0:
+            raise ValueError(f"max_records must be >= 0, got {max_records}")
+        self._max_records = max_records
         self._last_seen_at: datetime | None = None
 
     def fetch(self) -> list[dict[str, Any]]:
@@ -62,12 +67,27 @@ class TwitterFileConnector(BaseConnector):
                     # Skip invalid JSON lines
                     continue
 
-        # Filter by timestamp if checkpoint exists
+        # Filter by timestamp if checkpoint exists (strict > to avoid re-processing checkpoint record)
         if self._after_timestamp is not None:
             records = [
                 r for r in records
-                if self._parse_twitter_date(r.get("created_at", "")) >= self._after_timestamp
+                if self._parse_twitter_date(r.get("created_at", "")) > self._after_timestamp
             ]
+
+        # Sort by created_at to ensure chronological order before truncation
+        # This prevents checkpoint from advancing past unsorted intermediate records.
+        # Records with unparseable dates are sorted to the end (epoch=0 fallback).
+        def _sort_key(r: dict[str, Any]) -> datetime:
+            try:
+                return self._parse_twitter_date(r.get("created_at", ""))
+            except ValueError:
+                return datetime.min.replace(tzinfo=timezone.utc)
+
+        records.sort(key=_sort_key)
+
+        # Enforce operational limit (prevents accidental over-collection)
+        if self._max_records > 0:
+            records = records[:self._max_records]
 
         return records
 

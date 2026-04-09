@@ -116,7 +116,10 @@ async def run_connector_endpoint(
 
     try:
         # Instantiate connector (checkpoint is loaded inside run_connector)
-        connector: BaseConnector = TwitterFileConnector(file_path=file_path)
+        connector: BaseConnector = TwitterFileConnector(
+            file_path=file_path,
+            max_records=settings.CONNECTOR_TWITTER_MAX_RECORDS,
+        )
 
         # Run the connector
         mode = body.mode if body else "live"

@@ -1,0 +1,37 @@
+# Connector metadata for twitter-file
+# Defines permitted collection scope and operational limits.
+# Reviewed: 2026-04-09
+
+connector_id: twitter-file
+platform: twitter
+collection_mode: offline  # reads from local JSONL file; no live API calls made
+
+description: >
+  Offline-first connector that reads pre-collected Twitter/X posts from a local
+  JSONL dump file. No live API requests are made; the connector is suitable for
+  classroom and demo environments where live API access is not available or
+  appropriate.
+
+data_scope:
+  allowed: Public posts only (pre-collected or synthetic data)
+  prohibited:
+    - Direct Twitter/X API calls in this connector implementation
+    - Private or direct messages
+    - Personally identifiable data beyond public screen names
+  notes: >
+    All data processed by this connector must be either synthetically generated
+    or collected in compliance with the Twitter/X Developer Agreement and Policy.
+    Do not load scraped data that violates platform terms.
+
+operational_limits:
+  max_records_per_run: configured via CONNECTOR_TWITTER_MAX_RECORDS env var (0 = no limit)
+  rate_limits: N/A (offline file read; no API calls)
+  allowed_endpoints: N/A (offline)
+
+required_env_vars:
+  - CONNECTOR_TWITTER_FILE_PATH  # path to JSONL dump file
+
+optional_env_vars:
+  - CONNECTOR_TWITTER_MAX_RECORDS  # max records per run (default: 0 = no limit)
+
+credentials_required: false  # offline file connector; no API keys needed

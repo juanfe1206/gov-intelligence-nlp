@@ -13,6 +13,9 @@ class BaseConnector(ABC):
     - fetch(): Retrieve raw payloads from the source
     - normalize(): Convert a raw payload to NormalizedPost
     - checkpoint(): Return cursor/state for incremental fetching
+
+    SECURITY NOTE: Implementations must never log or expose credentials, API keys, or tokens.
+    Only log connector_id, record counts, and timestamps.
     """
 
     connector_id: str  # Class-level attribute, overridden by subclasses
