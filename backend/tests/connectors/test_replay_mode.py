@@ -91,7 +91,7 @@ class TestReplayMode:
         connector = TwitterFileConnector(file_path=str(test_file))
         replay_summary = await run_connector(async_db_session, connector, mode="replay")
         assert replay_summary.mode == "replay"
-        assert replay_summary.fetched == 1  # Only new post passes checkpoint filter
+        assert replay_summary.fetched == 2  # Replay mode skips checkpoint, fetches all records
 
         # Verify checkpoint was NOT updated by replay
         checkpoint = await get_checkpoint(async_db_session, "twitter-file")
