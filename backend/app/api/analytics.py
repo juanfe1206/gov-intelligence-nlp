@@ -26,8 +26,8 @@ router = APIRouter()
 
 
 def _default_start() -> date:
-    """Default start date (7 days ago)."""
-    return date.today() - timedelta(days=6)
+    """Default start date (10 years ago to cover all historical data)."""
+    return date.today() - timedelta(days=3650)
 
 
 def _default_end() -> date:

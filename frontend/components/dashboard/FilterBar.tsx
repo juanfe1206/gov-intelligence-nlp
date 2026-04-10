@@ -33,10 +33,14 @@ interface Props {
   onChange: (filters: FilterState) => void
 }
 
+const DEFAULT_DAYS = 3650
+
 const PRESETS = [
   { label: 'Last 7 days', days: 7 },
   { label: 'Last 14 days', days: 14 },
   { label: 'Last 30 days', days: 30 },
+  { label: 'Last year', days: 365 },
+  { label: 'All time', days: 3650 },
 ]
 
 export function getDefaultDates(days = 7) {
@@ -87,7 +91,7 @@ function TimeRangeSelect({ startDate, endDate, onChange }: TimeRangeProps) {
 export default function FilterBar({ filters, onChange }: Props) {
   const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null)
   const [platforms, setPlatforms] = useState<string[]>([])
-  const defaultDates = getDefaultDates(7)
+  const defaultDates = getDefaultDates(DEFAULT_DAYS)
 
   useEffect(() => {
     Promise.all([
@@ -111,7 +115,7 @@ export default function FilterBar({ filters, onChange }: Props) {
   }
 
   function handleClear() {
-    const { startDate, endDate } = getDefaultDates(7)
+    const { startDate, endDate } = getDefaultDates(DEFAULT_DAYS)
     onChange({ topic: '', subtopic: '', target: '', platform: '', startDate, endDate, selectedParties: [] })
   }
 

@@ -22,7 +22,7 @@ interface SentimentData {
 }
 
 export default function DashboardContent() {
-  const defaultDates = getDefaultDates(7)
+  const defaultDates = getDefaultDates(3650)
   const [filters, setFilters] = useState<FilterState>({
     topic: '',
     subtopic: '',

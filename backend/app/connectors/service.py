@@ -51,17 +51,18 @@ async def run_connector(
     # Create running job record (separate session so audit trail survives rollback)
     job_id = await _create_running_job(connector_id, mode=mode)
 
-    # Load checkpoint from DB and inject into connector
-    checkpoint_data = await get_checkpoint(session, connector_id)
-    if checkpoint_data and checkpoint_data.get("last_seen_at"):
-        from datetime import datetime as dt
-        last_seen_str = checkpoint_data["last_seen_at"]
-        try:
-            last_seen = dt.fromisoformat(last_seen_str.replace("Z", "+00:00"))
-            connector._after_timestamp = last_seen
-            logger.info(f"Loaded checkpoint for {connector_id}: last_seen_at={last_seen}")
-        except ValueError as e:
-            logger.warning(f"Could not parse checkpoint timestamp '{last_seen_str}': {e}")
+    # Load checkpoint from DB and inject into connector (skip for replay mode)
+    if mode != "replay":
+        checkpoint_data = await get_checkpoint(session, connector_id)
+        if checkpoint_data and checkpoint_data.get("last_seen_at"):
+            from datetime import datetime as dt
+            last_seen_str = checkpoint_data["last_seen_at"]
+            try:
+                last_seen = dt.fromisoformat(last_seen_str.replace("Z", "+00:00"))
+                connector._after_timestamp = last_seen
+                logger.info(f"Loaded checkpoint for {connector_id}: last_seen_at={last_seen}")
+            except ValueError as e:
+                logger.warning(f"Could not parse checkpoint timestamp '{last_seen_str}': {e}")
 
     # Initialize summary
     summary = ConnectorRunSummary(
