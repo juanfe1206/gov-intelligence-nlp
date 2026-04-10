@@ -110,7 +110,11 @@ export default function SpikeAlertBanner({ filters }: Props) {
           >
             <div className="flex items-center gap-3">
               <span className="text-sentiment-negative [font-size:var(--font-size-small)] font-medium">
-                {alert.spike_type === 'volume' ? '📈' : '😠'}{' '}
+                <span
+                  className={`inline-block w-2 h-2 rounded-full mr-1 ${
+                    alert.spike_type === 'volume' ? 'bg-primary' : 'bg-sentiment-negative'
+                  }`}
+                />
                 {alert.spike_type === 'volume' ? 'Volume' : 'Sentiment'} spike
               </span>
               <span className="text-foreground [font-size:var(--font-size-body)]">

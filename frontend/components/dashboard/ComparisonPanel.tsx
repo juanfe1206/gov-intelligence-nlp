@@ -57,11 +57,29 @@ function comparisonPartySlugs(filters: FilterState): string[] {
 }
 
 function SubtopicItem({ subtopic }: { subtopic: SubtopicSentiment }) {
-  const negPct = (subtopic.sentiment_percentage.negative * 100).toFixed(0)
+  const posPct = Math.round(subtopic.sentiment_percentage.positive * 100)
+  const neuPct = Math.round(subtopic.sentiment_percentage.neutral * 100)
+  const negPct = 100 - posPct - neuPct
+
   return (
-    <div className="flex items-center justify-between text-muted [font-size:var(--font-size-small)] py-1">
-      <span className="truncate">{subtopic.subtopic_label}</span>
-      <span className="text-sentiment-negative whitespace-nowrap ml-2">{negPct}% negative</span>
+    <div className="flex items-center gap-2 py-1">
+      <span className="truncate text-muted [font-size:var(--font-size-small)] flex-1">
+        {subtopic.subtopic_label}
+      </span>
+      <div className="flex h-2 w-24 rounded overflow-hidden gap-px shrink-0">
+        {posPct > 0 && (
+          <div className="bg-sentiment-positive" style={{ width: `${posPct}%` }} />
+        )}
+        {neuPct > 0 && (
+          <div className="bg-sentiment-warning" style={{ width: `${neuPct}%` }} />
+        )}
+        {negPct > 0 && (
+          <div className="bg-sentiment-negative" style={{ width: `${negPct}%` }} />
+        )}
+      </div>
+      <span className="text-sentiment-negative [font-size:var(--font-size-small)] whitespace-nowrap ml-2">
+        {negPct}% neg
+      </span>
     </div>
   )
 }
@@ -70,7 +88,7 @@ function PartyCard({ party }: { party: PartyComparison }) {
   const totalPosts = party.post_count
   const sentiments = [
     { label: 'Positive', count: party.positive_count, color: 'bg-sentiment-positive' },
-    { label: 'Neutral', count: party.neutral_count, color: 'bg-muted' },
+    { label: 'Neutral', count: party.neutral_count, color: 'bg-sentiment-warning' },
     { label: 'Negative', count: party.negative_count, color: 'bg-sentiment-negative' },
   ]
 
@@ -107,7 +125,7 @@ function PartyCard({ party }: { party: PartyComparison }) {
           <span className="text-sentiment-positive">●</span> Positive: {(party.sentiment_percentage.positive * 100).toFixed(1)}%
         </span>
         <span>
-          <span className="text-muted">●</span> Neutral: {(party.sentiment_percentage.neutral * 100).toFixed(1)}%
+          <span className="text-sentiment-warning">●</span> Neutral: {(party.sentiment_percentage.neutral * 100).toFixed(1)}%
         </span>
         <span>
           <span className="text-sentiment-negative">●</span> Negative: {(party.sentiment_percentage.negative * 100).toFixed(1)}%

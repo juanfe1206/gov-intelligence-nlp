@@ -123,13 +123,14 @@ async def get_posts(
     subtopic: str | None = Query(default=None, description="Filter by subtopic name"),
     target: str | None = Query(default=None, description="Filter by political target"),
     platform: str | None = Query(default=None, description="Filter by platform"),
+    limit: int = Query(default=20, ge=1, le=200, description="Number of posts to return"),
     session: AsyncSession = Depends(get_db),
 ) -> PostsResponse:
     """Get representative posts ranked by intensity and recency."""
     if start_date > end_date:
         raise HTTPException(status_code=422, detail="start_date must be less than or equal to end_date")
     taxonomy = request.app.state.taxonomy_config
-    return await analytics_service.get_posts(session, taxonomy, start_date, end_date, topic, subtopic, target, platform)
+    return await analytics_service.get_posts(session, taxonomy, start_date, end_date, topic, subtopic, target, platform, limit=limit)
 
 
 @router.get("/compare", response_model=ComparisonResponse)

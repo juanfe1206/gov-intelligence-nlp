@@ -8,6 +8,7 @@ import TopicsPanel from './TopicsPanel'
 import PostsPanel from './PostsPanel'
 import ComparisonPanel from './ComparisonPanel'
 import SpikeAlertBanner from './SpikeAlertBanner'
+import KpiCards from './KpiCards'
 
 const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
 
@@ -19,6 +20,10 @@ interface VolumeData {
 
 interface SentimentData {
   data: Array<{ date: string; positive: number; neutral: number; negative: number }>
+}
+
+interface TopicsData {
+  topics: Array<{ name: string; label: string; count: number }>
 }
 
 export default function DashboardContent() {
@@ -34,6 +39,7 @@ export default function DashboardContent() {
   })
   const [volumeData, setVolumeData] = useState<VolumeData | null>(null)
   const [sentimentData, setSentimentData] = useState<SentimentData | null>(null)
+  const [topicsData, setTopicsData] = useState<TopicsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -80,6 +86,33 @@ export default function DashboardContent() {
     }
     return lines.join('\n')
   }, [filters, volumeData, sentimentData])
+
+  // Compute KPI data from volume and sentiment
+  const kpiData = useMemo(() => {
+    const total = volumeData?.total ?? 0
+    let positivePct = 0
+    let neutralPct = 0
+    let negativePct = 0
+    if (sentimentData?.data.length) {
+      const totals = sentimentData.data.reduce(
+        (acc, d) => ({
+          pos: acc.pos + d.positive,
+          neu: acc.neu + d.neutral,
+          neg: acc.neg + d.negative,
+        }),
+        { pos: 0, neu: 0, neg: 0 },
+      )
+      const sum = totals.pos + totals.neu + totals.neg || 1
+      positivePct = (totals.pos / sum) * 100
+      neutralPct = (totals.neu / sum) * 100
+      negativePct = (totals.neg / sum) * 100
+    }
+    return { total, positivePct, neutralPct, negativePct }
+  }, [volumeData, sentimentData])
+
+  const topTopic = topicsData?.topics?.length
+    ? topicsData.topics.reduce((a, b) => (b.count > a.count ? b : a)).label
+    : ''
 
   // Copy summary to clipboard
   async function handleCopySummary() {
@@ -135,15 +168,17 @@ export default function DashboardContent() {
         if (filters.target) params.set('target', filters.target)
         if (filters.platform) params.set('platform', filters.platform)
 
-        const [volRes, sentRes] = await Promise.all([
+        const [volRes, sentRes, topicRes] = await Promise.all([
           fetch(`${API_BASE}/analytics/volume?${params.toString()}`, { signal: controller.signal }),
           fetch(`${API_BASE}/analytics/sentiment?${params.toString()}`, { signal: controller.signal }),
+          fetch(`${API_BASE}/analytics/topics?${params.toString()}`, { signal: controller.signal }),
         ])
         if (!volRes.ok || !sentRes.ok) throw new Error('Failed to fetch analytics data')
-        const [vol, sent] = await Promise.all([volRes.json(), sentRes.json()])
+        const [vol, sent, topics] = await Promise.all([volRes.json(), sentRes.json(), topicRes.json()])
         if (!isActive) return
         setVolumeData(vol)
         setSentimentData(sent)
+        setTopicsData(topics)
       } catch (error) {
         if ((error as Error).name === 'AbortError') return
         if (!isActive) return
@@ -198,6 +233,25 @@ export default function DashboardContent() {
   if (isEmpty) {
     return (
       <>
+        <div className="col-span-12">
+          <h2 className="text-foreground font-semibold [font-size:var(--font-size-h2)] [line-height:var(--line-height-h2)]">
+            Dashboard
+          </h2>
+          <p className="mt-1 text-muted [font-size:var(--font-size-small)]">
+            {filters.startDate} – {filters.endDate}
+          </p>
+        </div>
+
+        <FilterBar filters={filters} onChange={setFilters} />
+
+        <KpiCards
+          totalPosts={kpiData.total}
+          positivePct={kpiData.positivePct}
+          neutralPct={kpiData.neutralPct}
+          negativePct={kpiData.negativePct}
+          topTopic={topTopic}
+        />
+
         <SpikeAlertBanner filters={filters} />
 
         {/* Export and Copy Summary Buttons */}
@@ -221,7 +275,6 @@ export default function DashboardContent() {
           </div>
         )}
 
-        <FilterBar filters={filters} onChange={setFilters} />
         <TopicsPanel
           filters={filters}
           onTopicSelect={handleTopicSelect}
@@ -242,6 +295,25 @@ export default function DashboardContent() {
 
   return (
     <>
+      <div className="col-span-12">
+        <h2 className="text-foreground font-semibold [font-size:var(--font-size-h2)] [line-height:var(--line-height-h2)]">
+          Dashboard
+        </h2>
+        <p className="mt-1 text-muted [font-size:var(--font-size-small)]">
+          {filters.startDate} – {filters.endDate}
+        </p>
+      </div>
+
+      <FilterBar filters={filters} onChange={setFilters} />
+
+      <KpiCards
+        totalPosts={kpiData.total}
+        positivePct={kpiData.positivePct}
+        neutralPct={kpiData.neutralPct}
+        negativePct={kpiData.negativePct}
+        topTopic={topTopic}
+      />
+
       <SpikeAlertBanner filters={filters} />
 
       {/* Export and Copy Summary Buttons */}
@@ -264,17 +336,6 @@ export default function DashboardContent() {
           <p className="text-muted [font-size:var(--font-size-small)]">{actionMessage}</p>
         </div>
       )}
-
-      <FilterBar filters={filters} onChange={setFilters} />
-
-      <div className="col-span-12">
-        <h2 className="text-foreground font-semibold [font-size:var(--font-size-h2)] [line-height:var(--line-height-h2)]">
-          Dashboard
-        </h2>
-        <p className="mt-1 text-muted [font-size:var(--font-size-small)]">
-          {filters.startDate} – {filters.endDate}
-        </p>
-      </div>
 
       <div className="col-span-12 lg:col-span-6 bg-surface-raised rounded-lg border border-border p-4">
         <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)] mb-4">

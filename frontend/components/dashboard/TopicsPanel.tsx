@@ -234,16 +234,21 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
               </div>
 
               {/* Sentiment bar */}
-              <div className="flex h-1.5 rounded overflow-hidden gap-px">
+              <div className="flex h-2.5 rounded overflow-hidden gap-px">
                 {posW > 0 && (
                   <div className="bg-sentiment-positive" style={{ width: `${posW}%` }} />
                 )}
                 {neuW > 0 && (
-                  <div className="bg-muted" style={{ width: `${neuW}%` }} />
+                  <div className="bg-sentiment-warning" style={{ width: `${neuW}%` }} />
                 )}
                 {negW > 0 && (
                   <div className="bg-sentiment-negative" style={{ width: `${negW}%` }} />
                 )}
+              </div>
+              <div className="flex gap-3 mt-1 [font-size:var(--font-size-small)]">
+                <span className="text-sentiment-positive">{posW}%</span>
+                <span className="text-sentiment-warning">{neuW}%</span>
+                <span className="text-sentiment-negative">{negW}%</span>
               </div>
             </div>
           )

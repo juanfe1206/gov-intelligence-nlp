@@ -89,6 +89,12 @@ function PostCard({ post }: { post: PostItem }) {
         <span className="text-muted [font-size:var(--font-size-small)]">{post.platform}</span>
         <span className="text-muted [font-size:var(--font-size-small)]">·</span>
         <span className="text-muted [font-size:var(--font-size-small)]">{post.created_at}</span>
+        {post.author && (
+          <>
+            <span className="text-muted [font-size:var(--font-size-small)]">·</span>
+            <span className="text-muted [font-size:var(--font-size-small)]">{post.author}</span>
+          </>
+        )}
         <span className={`px-1.5 py-0.5 rounded [font-size:var(--font-size-small)] ${chip}`}>
           {post.sentiment}
         </span>
@@ -137,6 +143,7 @@ export default function PostsPanel({ filters }: Props) {
   const [data, setData] = useState<PostsData | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [limit, setLimit] = useState(20)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -154,6 +161,7 @@ export default function PostsPanel({ filters }: Props) {
         if (filters.subtopic) params.set('subtopic', filters.subtopic)
         if (filters.target) params.set('target', filters.target)
         if (filters.platform) params.set('platform', filters.platform)
+        params.set('limit', String(limit))
 
         const res = await fetch(`${API_BASE}/analytics/posts?${params.toString()}`, {
           signal: controller.signal,
@@ -177,7 +185,7 @@ export default function PostsPanel({ filters }: Props) {
       isActive = false
       controller.abort()
     }
-  }, [filters])
+  }, [filters, limit])
 
   if (loading) {
     return (
@@ -222,6 +230,16 @@ export default function PostsPanel({ filters }: Props) {
           <PostCard key={post.id} post={post} />
         ))}
       </div>
+      {posts.length < (data?.total ?? 0) && (
+        <div className="flex justify-center mt-4">
+          <button
+            onClick={() => setLimit((prev) => prev + 20)}
+            className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
+          >
+            Load more ({((data?.total ?? 0) - posts.length).toLocaleString()} remaining)
+          </button>
+        </div>
+      )}
     </div>
   )
 }

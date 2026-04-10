@@ -42,6 +42,12 @@
   /* Shell layout dimensions */
   --spacing-nav-width: 16rem;   /* 256px left nav width */
   --spacing-header-height: 4rem; /* 64px top header height */
+
+  /* Chart canvas tokens */
+  --chart-grid: #e2e8f0;
+  --chart-axis: #64748b;
+  --chart-tooltip-border: #e2e8f0;
+  --chart-neutral: #d97706;
 }
 
 @theme inline {
@@ -58,6 +64,12 @@
     --color-surface-raised: #1f2937; /* slate-800 */
     --color-border: #334155;         /* slate-700 */
     --color-muted: #94a3b8;          /* slate-400 */
+
+    /* Chart canvas tokens — dark mode overrides */
+    --chart-grid: #334155;
+    --chart-axis: #94a3b8;
+    --chart-tooltip-border: #475569;
+    --chart-neutral: #f59e0b;
   }
 }
 
