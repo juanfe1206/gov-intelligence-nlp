@@ -26,7 +26,7 @@ async def ask_question(
         raise HTTPException(status_code=422, detail="question must not be empty")
 
     top_n = max(1, min(body.top_n, 50))  # clamp to [1, 50]
-    taxonomy = request.app.state.taxonomy
+    taxonomy = request.app.state.taxonomy_config
     f = body.filters  # QAFilters | None
 
     qa_result = await qa_service.retrieve_and_aggregate(

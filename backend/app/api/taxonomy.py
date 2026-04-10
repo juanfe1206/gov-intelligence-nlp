@@ -35,4 +35,4 @@ async def get_taxonomy(request: Request) -> TaxonomyConfig:
             }
         }
     """
-    return request.app.state.taxonomy
+    return request.app.state.taxonomy_config

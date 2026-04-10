@@ -110,7 +110,7 @@ async def get_topics(
     """Get topic distribution ranked by volume with sentiment breakdown."""
     if start_date > end_date:
         raise HTTPException(status_code=422, detail="start_date must be less than or equal to end_date")
-    taxonomy = request.app.state.taxonomy
+    taxonomy = request.app.state.taxonomy_config
     return await analytics_service.get_topics(session, taxonomy, start_date, end_date, topic, subtopic, target, platform)
 
 
@@ -128,7 +128,7 @@ async def get_posts(
     """Get representative posts ranked by intensity and recency."""
     if start_date > end_date:
         raise HTTPException(status_code=422, detail="start_date must be less than or equal to end_date")
-    taxonomy = request.app.state.taxonomy
+    taxonomy = request.app.state.taxonomy_config
     return await analytics_service.get_posts(session, taxonomy, start_date, end_date, topic, subtopic, target, platform)
 
 
@@ -150,7 +150,7 @@ async def get_comparison(
             status_code=400,
             detail="At least two parties must be specified for comparison",
         )
-    taxonomy = request.app.state.taxonomy
+    taxonomy = request.app.state.taxonomy_config
     return await analytics_service.get_comparison(session, taxonomy, topic, parties, start_date, end_date, platform)
 
 
@@ -164,7 +164,7 @@ async def get_spikes(
     session: AsyncSession = Depends(get_db),
 ) -> SpikesResponse:
     """Detect volume and sentiment spikes across all topics."""
-    taxonomy = request.app.state.taxonomy
+    taxonomy = request.app.state.taxonomy_config
     return await analytics_service.get_spikes(
         session,
         taxonomy,
@@ -192,7 +192,7 @@ async def export_snapshot(
     e = end_date or _default_end()
     if s > e:
         raise HTTPException(status_code=422, detail="start_date must be before end_date")
-    taxonomy = request.app.state.taxonomy
+    taxonomy = request.app.state.taxonomy_config
     snapshot = await analytics_service.get_export(
         session,
         taxonomy,

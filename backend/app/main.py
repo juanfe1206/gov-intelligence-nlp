@@ -35,6 +35,9 @@ async def lifespan(app: FastAPI):
     # Startup: load taxonomy — raises on error, which aborts startup
     taxonomy_config = load_taxonomy(settings.TAXONOMY_PATH)
 
+    # Store full TaxonomyConfig for API responses (e.g., /taxonomy endpoint)
+    app.state.taxonomy_config = taxonomy_config
+
     # Convert Pydantic model to flat dictionary for classifier compatibility
     # Extract topic names from nested structure
     topic_names = [t.name for t in taxonomy_config.topics]
@@ -52,6 +55,7 @@ async def lifespan(app: FastAPI):
     for leader in taxonomy_config.targets.leaders:
         target_names.append(leader.name)
 
+    # Flat dictionary for classifier (uses .get() method)
     app.state.taxonomy = {
         "topics": topic_names,
         "subtopics": subtopic_names,
