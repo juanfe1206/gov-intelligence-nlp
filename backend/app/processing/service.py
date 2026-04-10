@@ -174,7 +174,9 @@ async def process_posts(
                 summary.errors.append(f"Post {post.id}: {error_msg}")
                 failed += 1
 
-        await session.commit()
+            # Commit after each batch to avoid long-running transactions
+            # that can be cancelled by Supabase statement timeouts
+            await session.commit()
 
         failure_rate = (failed / summary.processed) if summary.processed else 0.0
         if failed == 0:

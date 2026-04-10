@@ -172,10 +172,13 @@ async def classify_post(
             return val
 
         # Validate and normalize the result
+        # Use `or` to handle both missing keys and JSON null values from LLM
+        raw_topic = data.get("topic")
+        topic_val: str = raw_topic if isinstance(raw_topic, str) and raw_topic.strip() else ""
         result = ClassificationResult(
-            topic=data.get("topic", ""),
+            topic=topic_val,
             subtopic=_str_or_none(data.get("subtopic")),
-            sentiment=data.get("sentiment", "neutral"),
+            sentiment=data.get("sentiment") or "neutral",
             target=_str_or_none(data.get("target")),
             intensity=data.get("intensity"),
         )
@@ -188,7 +191,7 @@ async def classify_post(
         logger.error(f"Failed to parse classification response: {e}")
         return None
     except Exception as e:
-        logger.error(f"Classification failed: {e}")
+        logger.error(f"Classification failed: {e}", exc_info=True)
         return None
 
 
