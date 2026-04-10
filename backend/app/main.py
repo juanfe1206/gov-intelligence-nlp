@@ -33,7 +33,30 @@ async def lifespan(app: FastAPI):
     If loading fails, the exception propagates and prevents startup.
     """
     # Startup: load taxonomy — raises on error, which aborts startup
-    app.state.taxonomy = load_taxonomy(settings.TAXONOMY_PATH)
+    taxonomy_config = load_taxonomy(settings.TAXONOMY_PATH)
+
+    # Convert Pydantic model to flat dictionary for classifier compatibility
+    # Extract topic names from nested structure
+    topic_names = [t.name for t in taxonomy_config.topics]
+
+    # Collect all subtopic names across all topics
+    subtopic_names = []
+    for topic in taxonomy_config.topics:
+        for subtopic in topic.subtopics:
+            subtopic_names.append(subtopic.name)
+
+    # Collect all target names (parties + leaders)
+    target_names = []
+    for party in taxonomy_config.targets.parties:
+        target_names.append(party.name)
+    for leader in taxonomy_config.targets.leaders:
+        target_names.append(leader.name)
+
+    app.state.taxonomy = {
+        "topics": topic_names,
+        "subtopics": subtopic_names,
+        "targets": target_names,
+    }
     yield
     # Shutdown: nothing to clean up for taxonomy
 
