@@ -71,26 +71,40 @@ Rules:
     return prompt
 
 
-def _validate_taxonomy_membership(
+def _coerce_to_taxonomy(
     result: ClassificationResult,
     taxonomy: dict[str, Any],
-) -> bool:
-    """Return True only when classification values comply with taxonomy."""
+) -> ClassificationResult | None:
+    """Coerce classification result to valid taxonomy values.
+
+    - Unknown topic: reject entirely (topic is required and drives everything else)
+    - Unknown subtopic or target: set to None and keep the rest
+    """
     topics = {str(item) for item in taxonomy.get("topics", [])}
     subtopics = {str(item) for item in taxonomy.get("subtopics", [])}
     targets = {str(item) for item in taxonomy.get("targets", [])}
 
     if topics and result.topic not in topics:
-        logger.warning("Taxonomy mismatch: topic=%r not in %s", result.topic, topics)
-        return False
-    if result.subtopic is not None and subtopics and result.subtopic not in subtopics:
-        logger.warning("Taxonomy mismatch: subtopic=%r not in %s", result.subtopic, subtopics)
-        return False
-    if result.target is not None and targets and result.target not in targets:
-        logger.warning("Taxonomy mismatch: target=%r not in %s", result.target, targets)
-        return False
+        logger.warning("Classification rejected: topic=%r not in taxonomy", result.topic)
+        return None
 
-    return True
+    subtopic = result.subtopic
+    if subtopic is not None and subtopics and subtopic not in subtopics:
+        logger.warning("Dropping unknown subtopic=%r (not in taxonomy)", subtopic)
+        subtopic = None
+
+    target = result.target
+    if target is not None and targets and target not in targets:
+        logger.warning("Dropping unknown target=%r (not in taxonomy)", target)
+        target = None
+
+    return ClassificationResult(
+        topic=result.topic,
+        subtopic=subtopic,
+        sentiment=result.sentiment,
+        target=target,
+        intensity=result.intensity,
+    )
 
 
 @retry(
@@ -166,9 +180,7 @@ async def classify_post(
             intensity=data.get("intensity"),
         )
 
-        if not _validate_taxonomy_membership(result, taxonomy):
-            logger.warning("Classification rejected due to taxonomy mismatch")
-            return None
+        result = _coerce_to_taxonomy(result, taxonomy)
 
         return result
 
