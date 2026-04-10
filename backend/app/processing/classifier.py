@@ -81,10 +81,13 @@ def _validate_taxonomy_membership(
     targets = {str(item) for item in taxonomy.get("targets", [])}
 
     if topics and result.topic not in topics:
+        logger.warning("Taxonomy mismatch: topic=%r not in %s", result.topic, topics)
         return False
     if result.subtopic is not None and subtopics and result.subtopic not in subtopics:
+        logger.warning("Taxonomy mismatch: subtopic=%r not in %s", result.subtopic, subtopics)
         return False
     if result.target is not None and targets and result.target not in targets:
+        logger.warning("Taxonomy mismatch: target=%r not in %s", result.target, targets)
         return False
 
     return True
@@ -148,12 +151,18 @@ async def classify_post(
         # Parse the JSON response
         data = json.loads(content)
 
+        def _str_or_none(val: Any) -> str | None:
+            """Normalize LLM null-like strings to Python None."""
+            if val is None or (isinstance(val, str) and val.strip().lower() in ("null", "none", "")):
+                return None
+            return val
+
         # Validate and normalize the result
         result = ClassificationResult(
             topic=data.get("topic", ""),
-            subtopic=data.get("subtopic"),
+            subtopic=_str_or_none(data.get("subtopic")),
             sentiment=data.get("sentiment", "neutral"),
-            target=data.get("target"),
+            target=_str_or_none(data.get("target")),
             intensity=data.get("intensity"),
         )
 
