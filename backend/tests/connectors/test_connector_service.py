@@ -158,7 +158,18 @@ class TestRunConnector:
         assert summary1.inserted == 1
         assert summary1.duplicates == 0
 
-        # Second run - should be duplicate
+        # Clear checkpoint so second run fetches the same record again
+        # This tests DB-level deduplication via content_hash unique constraint
+        from sqlalchemy import delete
+        from app.models.connector_checkpoint import ConnectorCheckpoint
+        await async_db_session.execute(
+            delete(ConnectorCheckpoint).where(
+                ConnectorCheckpoint.connector_id == "twitter-file"
+            )
+        )
+        await async_db_session.commit()
+
+        # Second run - should fetch same record but detect as duplicate at DB level
         connector = TwitterFileConnector(file_path=str(test_file))
         summary2 = await run_connector(async_db_session, connector)
         assert summary2.inserted == 0
