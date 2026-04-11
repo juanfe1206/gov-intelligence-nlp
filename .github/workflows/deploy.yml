@@ -31,6 +31,8 @@ jobs:
       - name: Check imports
         run: |
           cd backend
+          export DATABASE_URL="postgresql+asyncpg://dummy:dummy@localhost/dummy"
+          export OPENAI_API_KEY="sk-dummy"
           python -c "import main; from app.main import app; print(app.title)"
 
   deploy-backend:
