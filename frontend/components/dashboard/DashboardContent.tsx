@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import VolumeChart from '@/components/charts/VolumeChart'
 import SentimentChart from '@/components/charts/SentimentChart'
+import NetSentimentChart from '@/components/charts/NetSentimentChart'
+import SmartDateChart from '@/components/charts/SmartDateChart'
 import FilterBar, { FilterState, getDefaultDates } from './FilterBar'
 import TopicsPanel from './TopicsPanel'
 import PostsPanel from './PostsPanel'
@@ -45,6 +47,7 @@ export default function DashboardContent() {
   const [copied, setCopied] = useState(false)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   // Build export URL from current filters
   const exportUrl = useMemo(() => {
@@ -208,16 +211,18 @@ export default function DashboardContent() {
 
   if (loading) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">Loading analytics…</p>
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+        <p className="text-on-surface-variant">Loading analytics...</p>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="col-span-12">
-        <p className="text-sentiment-negative [font-size:var(--font-size-body)]">{error}</p>
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <span className="material-symbols-outlined text-4xl text-error">error</span>
+        <p className="text-error">{error}</p>
       </div>
     )
   }
@@ -230,134 +235,210 @@ export default function DashboardContent() {
     filters.platform ||
     (filters.selectedParties?.length ?? 0) > 0
 
-  if (isEmpty) {
-    return (
-      <>
-        <div className="col-span-12">
-          <h2 className="text-foreground font-semibold [font-size:var(--font-size-h2)] [line-height:var(--line-height-h2)]">
-            Dashboard
-          </h2>
-          <p className="mt-1 text-muted [font-size:var(--font-size-small)]">
-            {filters.startDate} – {filters.endDate}
-          </p>
-        </div>
-
-        <FilterBar filters={filters} onChange={setFilters} />
-
-        <KpiCards
-          totalPosts={kpiData.total}
-          positivePct={kpiData.positivePct}
-          neutralPct={kpiData.neutralPct}
-          negativePct={kpiData.negativePct}
-          topTopic={topTopic}
-        />
-
-        <SpikeAlertBanner filters={filters} />
-
-        {/* Export and Copy Summary Buttons */}
-        <div className="col-span-12 flex justify-end gap-2">
-          <button
-            onClick={handleCopySummary}
-            className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
-          >
-            {copied ? 'Copied!' : 'Copy summary'}
-          </button>
-          <button
-            onClick={handleExport}
-            className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
-          >
-            Export
-          </button>
-        </div>
-        {actionMessage && (
-          <div className="col-span-12">
-            <p className="text-muted [font-size:var(--font-size-small)]">{actionMessage}</p>
-          </div>
-        )}
-
-        <TopicsPanel
-          filters={filters}
-          onTopicSelect={handleTopicSelect}
-          onClearTopic={handleClearTopic}
-        />
-        <ComparisonPanel filters={filters} />
-        <PostsPanel filters={filters} />
-        <div className="col-span-12">
-          <p className="text-muted [font-size:var(--font-size-body)]">
-            {hasFilters
-              ? 'No data for this filter combination. Try broadening your filters.'
-              : 'No data available for the selected period. Try adjusting the time range.'}
-          </p>
-        </div>
-      </>
-    )
-  }
-
   return (
-    <>
-      <div className="col-span-12">
-        <h2 className="text-foreground font-semibold [font-size:var(--font-size-h2)] [line-height:var(--line-height-h2)]">
-          Dashboard
-        </h2>
-        <p className="mt-1 text-muted [font-size:var(--font-size-small)]">
+    <div className="space-y-8">
+      {/* Header Section */}
+      <section className="max-w-3xl">
+        <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">
+          Intelligence Dashboard
+        </h1>
+        <p className="text-on-surface-variant text-lg">
           {filters.startDate} – {filters.endDate}
         </p>
-      </div>
+      </section>
 
+      {/* Filters */}
       <FilterBar filters={filters} onChange={setFilters} />
 
+      {/* KPI Cards - Now with actionable insights */}
       <KpiCards
         totalPosts={kpiData.total}
         positivePct={kpiData.positivePct}
         neutralPct={kpiData.neutralPct}
         negativePct={kpiData.negativePct}
         topTopic={topTopic}
+        sentimentData={sentimentData ?? undefined}
+        topicsData={topicsData ?? undefined}
       />
 
+      {/* Spike Alerts */}
       <SpikeAlertBanner filters={filters} />
 
-      {/* Export and Copy Summary Buttons */}
-      <div className="col-span-12 flex justify-end gap-2">
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">
         <button
           onClick={handleCopySummary}
-          className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
+          className="px-4 py-2.5 rounded-full text-sm font-medium border border-outline-variant/20 text-on-surface hover:text-white hover:bg-surface-container transition-colors flex items-center gap-2"
         >
+          <span className="material-symbols-outlined text-sm">{copied ? 'check' : 'content_copy'}</span>
           {copied ? 'Copied!' : 'Copy summary'}
         </button>
         <button
           onClick={handleExport}
-          className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
+          className="px-4 py-2.5 rounded-full text-sm font-medium bg-primary-container text-white hover:bg-primary-container/90 transition-colors flex items-center gap-2"
         >
+          <span className="material-symbols-outlined text-sm">download</span>
           Export
         </button>
       </div>
       {actionMessage && (
-        <div className="col-span-12">
-          <p className="text-muted [font-size:var(--font-size-small)]">{actionMessage}</p>
-        </div>
+        <p className="text-on-surface-variant text-sm text-right">{actionMessage}</p>
       )}
 
-      <div className="col-span-12 lg:col-span-6 bg-surface-raised rounded-lg border border-border p-4">
-        <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)] mb-4">
-          Post Volume
-        </h3>
-        <VolumeChart data={volumeData?.data ?? []} />
-      </div>
+      {!isEmpty && (
+        <>
+          {/* Charts Grid - Reorganized for actionable insights */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Net Sentiment Chart - Most important for politicians */}
+            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+              <NetSentimentChart data={sentimentData?.data ?? []} />
+            </div>
 
-      <div className="col-span-12 lg:col-span-6 bg-surface-raised rounded-lg border border-border p-4">
-        <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)] mb-4">
-          Sentiment Over Time
-        </h3>
-        <SentimentChart data={sentimentData?.data ?? []} />
-      </div>
+            {/* Sentiment Distribution Chart */}
+            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+              <SentimentChart data={sentimentData?.data ?? []} />
+            </div>
 
+            {/* Smart Activity Timeline with anomaly detection */}
+            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+              <SmartDateChart
+                data={sentimentData?.data ?? []}
+                onDateSelect={(date) => {
+                  setSelectedDate(date)
+                  setActionMessage(`Selected ${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — scroll to posts`)
+                  // Scroll to posts section
+                  document.getElementById('posts-section')?.scrollIntoView({ behavior: 'smooth' })
+                }}
+              />
+            </div>
+
+            {/* Engagement Volume Chart */}
+            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+              <VolumeChart data={volumeData?.data ?? []} />
+            </div>
+
+            {/* Key Insights Card */}
+            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="material-symbols-outlined text-primary">lightbulb</span>
+                <h3 className="font-bold text-white text-base">Key Insights</h3>
+              </div>
+              <div className="space-y-4">
+                {(() => {
+                  // Calculate insights
+                  const recent = sentimentData?.data?.slice(-7) || []
+                  const prev = sentimentData?.data?.slice(-14, -7) || []
+
+                  const recentAvg = recent.length > 0
+                    ? recent.reduce((acc, d) => acc + d.positive - d.negative, 0) / recent.length
+                    : 0
+                  const prevAvg = prev.length > 0
+                    ? prev.reduce((acc, d) => acc + d.positive - d.negative, 0) / prev.length
+                    : 0
+
+                  const sentimentChange = prevAvg !== 0
+                    ? ((recentAvg - prevAvg) / Math.abs(prevAvg)) * 100
+                    : 0
+
+                  // Volume trend
+                  const recentVol = volumeData?.data?.slice(-7) || []
+                  const prevVol = volumeData?.data?.slice(-14, -7) || []
+                  const recentVolAvg = recentVol.length > 0
+                    ? recentVol.reduce((acc, d) => acc + d.count, 0) / recentVol.length
+                    : 0
+                  const prevVolAvg = prevVol.length > 0
+                    ? prevVol.reduce((acc, d) => acc + d.count, 0) / prevVol.length
+                    : 0
+                  const volChange = prevVolAvg > 0
+                    ? ((recentVolAvg - prevVolAvg) / prevVolAvg) * 100
+                    : 0
+
+                  const insights = []
+
+                  if (sentimentChange > 15) {
+                    insights.push({
+                      icon: 'trending_up',
+                      color: 'text-secondary',
+                      text: 'Positive sentiment rising significantly. Good time to amplify messaging.',
+                    })
+                  } else if (sentimentChange < -15) {
+                    insights.push({
+                      icon: 'trending_down',
+                      color: 'text-error',
+                      text: 'Negative sentiment spike detected. Consider addressing concerns.',
+                    })
+                  }
+
+                  if (volChange > 50) {
+                    insights.push({
+                      icon: 'notifications_active',
+                      color: 'text-tertiary',
+                      text: 'Engagement surging. High visibility window active.',
+                    })
+                  } else if (volChange < -30) {
+                    insights.push({
+                      icon: 'trending_down',
+                      color: 'text-on-surface-variant',
+                      text: 'Engagement dropping. Consider re-engagement tactics.',
+                    })
+                  }
+
+                  // Top performing topic
+                  if (topicsData?.topics && topicsData.topics.length > 0) {
+                    const topTopic = topicsData.topics.reduce((a, b) => a.count > b.count ? a : b)
+                    insights.push({
+                      icon: 'star',
+                      color: 'text-primary',
+                      text: `${topTopic.label} is the most discussed topic with ${topTopic.count.toLocaleString()} mentions.`,
+                    })
+                  }
+
+                  if (insights.length === 0) {
+                    insights.push({
+                      icon: 'check_circle',
+                      color: 'text-secondary',
+                      text: 'Sentiment and engagement remain stable. Continue monitoring.',
+                    })
+                  }
+
+                  return insights.map((insight, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <span className={"material-symbols-outlined " + insight.color + " mt-0.5"}>{insight.icon}</span>
+                      <p className="text-sm text-white">{insight.text}</p>
+                    </div>
+                  ))
+                })()}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Topics Panel */}
       <TopicsPanel
         filters={filters}
         onTopicSelect={handleTopicSelect}
         onClearTopic={handleClearTopic}
       />
+
+      {/* Comparison Panel */}
       <ComparisonPanel filters={filters} />
-      <PostsPanel filters={filters} />
-    </>
+
+      {/* Posts Panel */}
+      <div id="posts-section">
+        <PostsPanel filters={filters} />
+      </div>
+
+      {isEmpty && (
+        <div className="text-center py-12">
+          <span className="material-symbols-outlined text-4xl text-on-surface-variant/50 mb-4">analytics</span>
+          <p className="text-on-surface-variant">
+            {hasFilters
+              ? 'No data for this filter combination. Try broadening your filters.'
+              : 'No data available for the selected period. Try adjusting the time range.'}
+          </p>
+        </div>
+      )}
+    </div>
   )
 }

@@ -82,8 +82,9 @@ export default function SpikeAlertBanner({ filters }: Props) {
 
   if (error) {
     return (
-      <div className="col-span-12 rounded-lg border border-border bg-surface-raised p-4">
-        <p className="text-sentiment-negative [font-size:var(--font-size-body)]">
+      <div className="rounded-lg border border-error/20 bg-error-container/10 p-4">
+        <p className="text-error flex items-center gap-2">
+          <span className="material-symbols-outlined">error</span>
           {error}
         </p>
       </div>
@@ -93,34 +94,37 @@ export default function SpikeAlertBanner({ filters }: Props) {
   if (spikes.length === 0) return null
 
   return (
-    <div className="col-span-12 rounded-lg border border-border bg-surface-raised p-4 flex flex-col gap-2">
-      <div className="flex items-center gap-2">
-        <span className="text-sentiment-negative font-semibold [font-size:var(--font-size-body)]">
-          ⚠ Spike Alerts
+    <div className="rounded-xl border border-error/20 bg-error-container/5 p-5 shadow-lg">
+      <div className="flex items-center gap-3 mb-4">
+        <span className="material-symbols-outlined text-error text-xl animate-pulse">crisis_alert</span>
+        <span className="text-error font-bold text-base">
+          Spike Alerts
         </span>
-        <span className="text-muted [font-size:var(--font-size-small)]">
+        <span className="text-on-surface-variant text-sm">
           {spikes.length} topic{spikes.length !== 1 ? 's' : ''} flagged
         </span>
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {spikes.map((alert, i) => (
           <div
             key={`${alert.topic}-${alert.spike_type}-${i}`}
-            className="flex items-center justify-between rounded border border-border bg-surface px-3 py-2"
+            className="flex items-center justify-between rounded-lg border border-outline-variant/10 bg-surface-container p-4 hover:border-error/30 transition-colors"
           >
-            <div className="flex items-center gap-3">
-              <span className="text-sentiment-negative [font-size:var(--font-size-small)] font-medium">
-                <span
-                  className={`inline-block w-2 h-2 rounded-full mr-1 ${
-                    alert.spike_type === 'volume' ? 'bg-primary' : 'bg-sentiment-negative'
-                  }`}
-                />
-                {alert.spike_type === 'volume' ? 'Volume' : 'Sentiment'} spike
-              </span>
-              <span className="text-foreground [font-size:var(--font-size-body)]">
+            <div className="flex items-center gap-4">
+              <div className={`flex items-center gap-2 px-2 py-1 rounded-full text-xs font-bold ${
+                alert.spike_type === 'volume'
+                  ? 'bg-primary/10 text-primary border border-primary/20'
+                  : 'bg-error/10 text-error border border-error/20'
+              }`}>
+                <span className="material-symbols-outlined text-xs">
+                  {alert.spike_type === 'volume' ? 'trending_up' : 'sentiment_very_dissatisfied'}
+                </span>
+                {alert.spike_type === 'volume' ? 'Volume' : 'Sentiment'}
+              </div>
+              <span className="text-white font-medium">
                 {alert.topic_label}
               </span>
-              <span className="text-muted [font-size:var(--font-size-small)]">
+              <span className="text-on-surface-variant text-sm">
                 {formatMagnitude(alert)} in last {alert.window_hours}h
               </span>
             </div>
@@ -130,9 +134,10 @@ export default function SpikeAlertBanner({ filters }: Props) {
                 const q = encodeURIComponent(alert.suggested_question)
                 router.push(`/qa?topic=${t}&question=${q}`)
               }}
-              className="px-3 py-1 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-small)] whitespace-nowrap"
+              className="px-4 py-2 rounded-full text-sm font-medium bg-primary-container text-white hover:bg-primary-container/90 transition-colors flex items-center gap-2"
             >
-              Investigate →
+              <span className="material-symbols-outlined text-xs">search</span>
+              Investigate
             </button>
           </div>
         ))}

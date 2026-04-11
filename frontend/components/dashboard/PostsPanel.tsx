@@ -28,14 +28,14 @@ interface Props {
   filters: FilterState
 }
 
-function sentimentStyles(sentiment: string): { chip: string } {
+function sentimentStyles(sentiment: string): { chip: string; icon: string } {
   switch (sentiment) {
     case 'positive':
-      return { chip: 'text-sentiment-positive bg-sentiment-positive/10' }
+      return { chip: 'text-secondary bg-secondary/10 border-secondary/20', icon: 'sentiment_satisfied' }
     case 'negative':
-      return { chip: 'text-sentiment-negative bg-sentiment-negative/10' }
+      return { chip: 'text-error bg-error/10 border-error/20', icon: 'sentiment_dissatisfied' }
     default:
-      return { chip: 'text-muted bg-muted/10' }
+      return { chip: 'text-tertiary bg-tertiary/10 border-tertiary/20', icon: 'sentiment_neutral' }
   }
 }
 
@@ -45,7 +45,7 @@ function PostCard({ post }: { post: PostItem }) {
   const [textOverflows, setTextOverflows] = useState(false)
   const bodyRef = useRef<HTMLParagraphElement>(null)
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const { chip } = sentimentStyles(post.sentiment)
+  const { chip, icon } = sentimentStyles(post.sentiment)
 
   useEffect(() => {
     return () => {
@@ -83,35 +83,36 @@ function PostCard({ post }: { post: PostItem }) {
   }
 
   return (
-    <div className="rounded border border-border bg-surface p-4 flex flex-col gap-2">
+    <div className="rounded-lg border border-outline-variant/10 bg-surface-container p-5 flex flex-col gap-3 hover:border-outline-variant/30 transition-colors">
       {/* Metadata row */}
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-muted [font-size:var(--font-size-small)]">{post.platform}</span>
-        <span className="text-muted [font-size:var(--font-size-small)]">·</span>
-        <span className="text-muted [font-size:var(--font-size-small)]">{post.created_at}</span>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-on-surface-variant text-xs font-medium uppercase tracking-wider">{post.platform}</span>
+        <span className="text-on-surface-variant">·</span>
+        <span className="text-on-surface-variant text-xs">{post.created_at}</span>
         {post.author && (
           <>
-            <span className="text-muted [font-size:var(--font-size-small)]">·</span>
-            <span className="text-muted [font-size:var(--font-size-small)]">{post.author}</span>
+            <span className="text-on-surface-variant">·</span>
+            <span className="text-on-surface-variant text-xs font-medium">@{post.author}</span>
           </>
         )}
-        <span className={`px-1.5 py-0.5 rounded [font-size:var(--font-size-small)] ${chip}`}>
+        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-xs font-bold ${chip}`}>
+          <span className="material-symbols-outlined text-xs">{icon}</span>
           {post.sentiment}
-        </span>
-        <span className="px-1.5 py-0.5 rounded border border-border text-muted [font-size:var(--font-size-small)]">
+        </div>
+        <span className="px-2 py-0.5 rounded-full border border-outline-variant/20 text-on-surface-variant text-xs font-medium">
           {post.topic_label}
         </span>
         {post.subtopic_label && (
-          <span className="px-1.5 py-0.5 rounded border border-border text-muted [font-size:var(--font-size-small)]">
+          <span className="px-2 py-0.5 rounded-full border border-outline-variant/20 text-on-surface-variant text-xs font-medium">
             {post.subtopic_label}
           </span>
         )}
       </div>
 
-      <div className="flex flex-col gap-1">
+      <div className="flex flex-col gap-2">
         <p
           ref={bodyRef}
-          className={`text-foreground [font-size:var(--font-size-body)] ${expanded ? '' : 'line-clamp-3'}`}
+          className={`text-white text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}
         >
           {post.original_text}
         </p>
@@ -119,7 +120,7 @@ function PostCard({ post }: { post: PostItem }) {
           <button
             type="button"
             onClick={() => setExpanded((e) => !e)}
-            className="self-start text-primary [font-size:var(--font-size-small)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            className="self-start text-primary text-xs font-medium hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
           >
             {expanded ? 'Show less' : 'Show more'}
           </button>
@@ -127,11 +128,12 @@ function PostCard({ post }: { post: PostItem }) {
       </div>
 
       {/* Copy button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-2 border-t border-outline-variant/10">
         <button
           onClick={handleCopy}
-          className="text-primary [font-size:var(--font-size-small)] hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+          className="text-primary text-xs font-medium hover:underline flex items-center gap-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
         >
+          <span className="material-symbols-outlined text-xs">{copied ? 'check' : 'content_copy'}</span>
           {copied ? 'Copied!' : 'Copy text'}
         </button>
       </div>
@@ -189,16 +191,19 @@ export default function PostsPanel({ filters }: Props) {
 
   if (loading) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">Loading posts…</p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <div className="flex items-center gap-2 text-on-surface-variant">
+          <span className="material-symbols-outlined animate-spin">progress_activity</span>
+          <span>Loading posts…</span>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="col-span-12">
-        <p className="text-sentiment-negative [font-size:var(--font-size-body)]">{error}</p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <p className="text-error">{error}</p>
       </div>
     )
   }
@@ -207,35 +212,35 @@ export default function PostsPanel({ filters }: Props) {
 
   if (posts.length === 0) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">
-          No posts found for the selected filters.
-        </p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <p className="text-on-surface-variant">No posts found for the selected filters.</p>
       </div>
     )
   }
 
   return (
-    <div className="col-span-12 bg-surface-raised rounded-lg border border-border p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">
-          Representative Posts
-        </h3>
-        <span className="text-muted [font-size:var(--font-size-small)]">
+    <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary">forum</span>
+          <h3 className="font-bold text-white text-lg">Representative Posts</h3>
+        </div>
+        <span className="text-on-surface-variant text-sm">
           Showing {posts.length} of {(data?.total ?? 0).toLocaleString()}
         </span>
       </div>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-4">
         {posts.map((post) => (
           <PostCard key={post.id} post={post} />
         ))}
       </div>
       {posts.length < (data?.total ?? 0) && (
-        <div className="flex justify-center mt-4">
+        <div className="flex justify-center mt-6">
           <button
             onClick={() => setLimit((prev) => prev + 20)}
-            className="px-4 py-2 rounded border border-border text-foreground hover:bg-surface-raised [font-size:var(--font-size-body)]"
+            className="px-6 py-2.5 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-white hover:bg-surface-container-high transition-colors flex items-center gap-2"
           >
+            <span className="material-symbols-outlined text-sm">expand_more</span>
             Load more ({((data?.total ?? 0) - posts.length).toLocaleString()} remaining)
           </button>
         </div>

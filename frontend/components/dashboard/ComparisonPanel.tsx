@@ -62,22 +62,22 @@ function SubtopicItem({ subtopic }: { subtopic: SubtopicSentiment }) {
   const negPct = 100 - posPct - neuPct
 
   return (
-    <div className="flex items-center gap-2 py-1">
-      <span className="truncate text-muted [font-size:var(--font-size-small)] flex-1">
+    <div className="flex items-center gap-3 py-1">
+      <span className="truncate text-on-surface-variant text-sm flex-1">
         {subtopic.subtopic_label}
       </span>
-      <div className="flex h-2 w-24 rounded overflow-hidden gap-px shrink-0">
+      <div className="flex h-2 w-24 rounded-full overflow-hidden shrink-0">
         {posPct > 0 && (
-          <div className="bg-sentiment-positive" style={{ width: `${posPct}%` }} />
+          <div className="bg-secondary" style={{ width: `${posPct}%` }} />
         )}
         {neuPct > 0 && (
-          <div className="bg-sentiment-warning" style={{ width: `${neuPct}%` }} />
+          <div className="bg-tertiary" style={{ width: `${neuPct}%` }} />
         )}
         {negPct > 0 && (
-          <div className="bg-sentiment-negative" style={{ width: `${negPct}%` }} />
+          <div className="bg-error" style={{ width: `${negPct}%` }} />
         )}
       </div>
-      <span className="text-sentiment-negative [font-size:var(--font-size-small)] whitespace-nowrap ml-2">
+      <span className="text-error text-sm font-medium whitespace-nowrap">
         {negPct}% neg
       </span>
     </div>
@@ -87,19 +87,19 @@ function SubtopicItem({ subtopic }: { subtopic: SubtopicSentiment }) {
 function PartyCard({ party }: { party: PartyComparison }) {
   const totalPosts = party.post_count
   const sentiments = [
-    { label: 'Positive', count: party.positive_count, color: 'bg-sentiment-positive' },
-    { label: 'Neutral', count: party.neutral_count, color: 'bg-sentiment-warning' },
-    { label: 'Negative', count: party.negative_count, color: 'bg-sentiment-negative' },
+    { label: 'Positive', count: party.positive_count, color: 'bg-secondary' },
+    { label: 'Neutral', count: party.neutral_count, color: 'bg-tertiary' },
+    { label: 'Negative', count: party.negative_count, color: 'bg-error' },
   ]
 
   return (
-    <div className="rounded border border-border bg-surface-raised p-4 flex flex-col gap-3">
-      <div className="flex items-baseline justify-between border-b border-border pb-2">
-        <h4 className="font-medium text-foreground [font-size:var(--font-size-h4)]">{party.party_label}</h4>
-        <span className="text-muted [font-size:var(--font-size-small)]">{totalPosts.toLocaleString()} posts</span>
+    <div className="rounded-lg border border-outline-variant/10 bg-surface-container p-5 flex flex-col gap-4">
+      <div className="flex items-baseline justify-between border-b border-outline-variant/10 pb-3">
+        <h4 className="font-bold text-white text-base">{party.party_label}</h4>
+        <span className="text-on-surface-variant text-sm">{totalPosts.toLocaleString()} posts</span>
       </div>
 
-      <div className="flex h-6 w-full overflow-hidden rounded">
+      <div className="flex h-6 w-full overflow-hidden rounded-full">
         {sentiments.map((s) => {
           const widthPct = totalPosts > 0 ? (s.count / totalPosts) * 100 : 0
           const pctLabel = (
@@ -112,7 +112,7 @@ function PartyCard({ party }: { party: PartyComparison }) {
               style={{ width: `${widthPct}%` }}
               title={`${s.label}: ${s.count} (${pctLabel}%)`}
             >
-              <div className="hidden group-hover:block absolute top-full mt-1 px-2 py-1 bg-foreground text-surface rounded [font-size:var(--font-size-small)] whitespace-nowrap z-10">
+              <div className="hidden group-hover:block absolute top-full mt-1 px-2 py-1 bg-surface-container-high text-white rounded text-xs whitespace-nowrap z-10">
                 {s.label}: {s.count}
               </div>
             </div>
@@ -120,21 +120,21 @@ function PartyCard({ party }: { party: PartyComparison }) {
         })}
       </div>
 
-      <div className="flex gap-4 text-muted [font-size:var(--font-size-small)] flex-wrap">
-        <span>
-          <span className="text-sentiment-positive">●</span> Positive: {(party.sentiment_percentage.positive * 100).toFixed(1)}%
+      <div className="flex gap-4 text-sm flex-wrap">
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-secondary" /> Positive: {(party.sentiment_percentage.positive * 100).toFixed(1)}%
         </span>
-        <span>
-          <span className="text-sentiment-warning">●</span> Neutral: {(party.sentiment_percentage.neutral * 100).toFixed(1)}%
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-tertiary" /> Neutral: {(party.sentiment_percentage.neutral * 100).toFixed(1)}%
         </span>
-        <span>
-          <span className="text-sentiment-negative">●</span> Negative: {(party.sentiment_percentage.negative * 100).toFixed(1)}%
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-error" /> Negative: {(party.sentiment_percentage.negative * 100).toFixed(1)}%
         </span>
       </div>
 
       {party.top_subtopics.length > 0 && (
-        <div className="border-t border-border pt-3">
-          <p className="text-muted [font-size:var(--font-size-small)] font-medium mb-2">Top Subtopics</p>
+        <div className="border-t border-outline-variant/10 pt-3">
+          <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-2">Top Subtopics</p>
           <div className="flex flex-col gap-1">
             {party.top_subtopics.slice(0, 5).map((st) => (
               <SubtopicItem key={st.subtopic} subtopic={st} />
@@ -222,17 +222,19 @@ export default function ComparisonPanel({ filters }: Props) {
 
   if (!filters.topic) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">Select a topic to compare parties.</p>
+      <div className="bg-surface-container-low/50 rounded-lg border border-outline-variant/10 p-6 text-center">
+        <span className="material-symbols-outlined text-on-surface-variant text-4xl mb-2">compare_arrows</span>
+        <p className="text-on-surface-variant">Select a topic to compare parties.</p>
       </div>
     )
   }
 
   if (partySlugs.length < 2) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">
-          Select at least two parties in &quot;Compare Parties&quot; to view a side-by-side comparison.
+      <div className="bg-surface-container-low/50 rounded-lg border border-outline-variant/10 p-6 text-center">
+        <span className="material-symbols-outlined text-on-surface-variant text-4xl mb-2">groups</span>
+        <p className="text-on-surface-variant">
+          Select at least two parties in "Compare Parties" to view a side-by-side comparison.
         </p>
       </div>
     )
@@ -240,16 +242,19 @@ export default function ComparisonPanel({ filters }: Props) {
 
   if (loading) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">Loading comparison…</p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <div className="flex items-center gap-2 text-on-surface-variant">
+          <span className="material-symbols-outlined animate-spin">progress_activity</span>
+          <span>Loading comparison…</span>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="col-span-12">
-        <p className="text-sentiment-negative [font-size:var(--font-size-body)]">{error}</p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <p className="text-error">{error}</p>
       </div>
     )
   }
@@ -258,21 +263,22 @@ export default function ComparisonPanel({ filters }: Props) {
 
   if (parties.length === 0) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">
-          No comparison data available for the selected filters.
-        </p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <p className="text-on-surface-variant">No comparison data available for the selected filters.</p>
       </div>
     )
   }
 
   return (
-    <div className="col-span-12 bg-surface-raised rounded-lg border border-border p-4">
-      <div className="mb-4">
-        <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">
-          Sentiment Comparison: {data?.topic_label}
-        </h3>
-        <p className="text-muted [font-size:var(--font-size-small)] mt-1">
+    <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-1">
+          <span className="material-symbols-outlined text-primary">compare_arrows</span>
+          <h3 className="font-bold text-white text-lg">
+            Sentiment Comparison: {data?.topic_label}
+          </h3>
+        </div>
+        <p className="text-on-surface-variant text-sm">
           {data?.date_range.start_date} to {data?.date_range.end_date} — {data?.total_posts.toLocaleString()} posts
         </p>
       </div>

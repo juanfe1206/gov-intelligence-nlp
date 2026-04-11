@@ -53,21 +53,21 @@ function formatDateTime(isoString: string): string {
 function statusBadgeStyles(status: string): string {
   switch (status) {
     case 'completed':
-      return 'bg-sentiment-positive/10 text-sentiment-positive'
+      return 'bg-secondary/10 text-secondary border-secondary/20'
     case 'failed':
-      return 'bg-sentiment-negative/10 text-sentiment-negative'
+      return 'bg-error/10 text-error border-error/20'
     case 'partial':
-      return 'bg-sentiment-warning/10 text-sentiment-warning'
+      return 'bg-tertiary/10 text-tertiary border-tertiary/20'
     case 'running':
-      return 'bg-primary/10 text-primary'
+      return 'bg-primary/10 text-primary border-primary/20'
     default:
-      return 'bg-muted/10 text-muted'
+      return 'bg-surface-container-high text-on-surface-variant border-outline-variant/20'
   }
 }
 
 function truncateError(error: string, maxLength: number = 80): string {
   if (error.length <= maxLength) return error
-  return error.slice(0, maxLength) + '…'
+  return error.slice(0, maxLength) + '...'
 }
 
 export default function AdminContent() {
@@ -104,7 +104,6 @@ export default function AdminContent() {
   }, [])
 
   const fetchHealth = useCallback(async (signal?: AbortSignal) => {
-    // API health
     let apiOk = false
     try {
       const res = await fetch(`${API_BASE}/health`, { signal })
@@ -115,7 +114,6 @@ export default function AdminContent() {
         setApiHealth({ status: 'error' })
       }
     }
-    // DB health — if API was unreachable, show "Unknown" instead of misleading "Disconnected"
     try {
       const res = await fetch(`${API_BASE}/health/db`, { signal })
       const data = await res.json().catch(() => ({}))
@@ -163,7 +161,6 @@ export default function AdminContent() {
         const errorData = await res.json().catch(() => ({}))
         throw new Error(errorData.detail?.message || errorData.detail || 'Retry failed')
       }
-      // Refetch jobs to show the new running job
       await fetchJobs().catch(() => {
         setRetryError((prev) => ({
           ...prev,
@@ -215,7 +212,6 @@ export default function AdminContent() {
     }
   }, [fetchJobs, preserveRaw])
 
-  // Derive source summary from completed/partial ingest jobs
   const sourceSummary = jobs
     .filter(
       (j) =>
@@ -232,12 +228,10 @@ export default function AdminContent() {
 
   if (loading && jobs.length === 0) {
     return (
-      <div className="col-span-12 flex items-center justify-center py-12">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          <p className="text-muted [font-size:var(--font-size-body)]">
-            Loading jobs…
-          </p>
+      <div className="flex items-center justify-center py-12">
+        <div className="flex flex-col items-center gap-4">
+          <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+          <p className="text-on-surface-variant">Loading jobs...</p>
         </div>
       </div>
     )
@@ -245,15 +239,17 @@ export default function AdminContent() {
 
   if (error) {
     return (
-      <div className="col-span-12 flex flex-col gap-3">
-        <p className="text-sentiment-negative [font-size:var(--font-size-body)]">
-          {error}
-        </p>
+      <div className="flex flex-col gap-4">
+        <div className="flex items-center gap-2 text-error">
+          <span className="material-symbols-outlined">error</span>
+          <p>{error}</p>
+        </div>
         <button
           type="button"
           onClick={fetchJobs}
-          className="px-3 py-1.5 rounded border border-border bg-surface text-foreground hover:bg-surface-raised [font-size:var(--font-size-small)] disabled:opacity-50 self-start"
+          className="px-4 py-2 rounded-full border border-outline-variant/20 bg-surface-container text-white hover:bg-surface-container-high text-sm font-medium self-start flex items-center gap-2"
         >
+          <span className="material-symbols-outlined text-sm">refresh</span>
           Retry
         </button>
       </div>
@@ -261,58 +257,72 @@ export default function AdminContent() {
   }
 
   return (
-    <div className="col-span-12 flex flex-col gap-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h2 className="text-foreground font-semibold [font-size:var(--font-size-h2)] [line-height:var(--line-height-h2)]">
+      <section className="max-w-3xl">
+        <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">
           Admin Operations
-        </h2>
-        <p className="mt-2 text-muted [font-size:var(--font-size-body)] [line-height:var(--line-height-body)]">
+        </h1>
+        <p className="text-on-surface-variant text-lg">
           Monitor pipeline health, review job history, and recover from failures.
         </p>
-      </div>
+      </section>
 
       {/* System Health */}
-      <div className="bg-surface-raised rounded-lg border border-border px-4 py-3">
-        <div className="flex items-center gap-6">
-          <span className={`flex items-center gap-1.5 [font-size:var(--font-size-small)] ${
-            apiHealth.status === 'ok' ? 'text-sentiment-positive' :
-            apiHealth.status === 'error' ? 'text-sentiment-negative' : 'text-muted'
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="material-symbols-outlined text-primary">health_and_safety</span>
+          <h3 className="font-bold text-white">System Health</h3>
+        </div>
+        <div className="flex flex-wrap items-center gap-6">
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
+            apiHealth.status === 'ok'
+              ? 'bg-secondary/10 text-secondary border-secondary/20'
+              : apiHealth.status === 'error'
+              ? 'bg-error/10 text-error border-error/20'
+              : 'bg-surface-container-high text-on-surface-variant'
           }`}>
-            ●
-            <span>
-              {apiHealth.status === 'ok' ? 'API: Operational' :
-               apiHealth.status === 'error' ? 'API: Unavailable' : 'API: Checking…'}
+            <span className="material-symbols-outlined text-sm">
+              {apiHealth.status === 'ok' ? 'check_circle' : apiHealth.status === 'error' ? 'error' : 'pending'}
             </span>
-          </span>
-          <span className={`flex items-center gap-1.5 [font-size:var(--font-size-small)] ${
-            dbHealth.status === 'ok' ? 'text-sentiment-positive' :
-            (dbHealth.status === 'degraded' || dbHealth.status === 'error') ? 'text-sentiment-negative' : 'text-muted'
+            <span className="font-medium text-sm">
+              {apiHealth.status === 'ok' ? 'API: Operational' : apiHealth.status === 'error' ? 'API: Unavailable' : 'API: Checking...'}
+            </span>
+          </div>
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-full border ${
+            dbHealth.status === 'ok'
+              ? 'bg-secondary/10 text-secondary border-secondary/20'
+              : (dbHealth.status === 'degraded' || dbHealth.status === 'error')
+              ? 'bg-error/10 text-error border-error/20'
+              : 'bg-surface-container-high text-on-surface-variant'
           }`}>
-            ●
-            <span>
+            <span className="material-symbols-outlined text-sm">
+              {dbHealth.status === 'ok' ? 'check_circle' : (dbHealth.status === 'degraded' || dbHealth.status === 'error') ? 'error' : 'pending'}
+            </span>
+            <span className="font-medium text-sm">
               {dbHealth.status === 'ok' ? 'Database: Connected' :
                (dbHealth.status === 'degraded' || dbHealth.status === 'error') ? 'Database: Disconnected' :
-               dbHealth.status === 'unknown' ? 'Database: Unknown' : 'Database: Checking…'}
+               dbHealth.status === 'unknown' ? 'Database: Unknown' : 'Database: Checking...'}
             </span>
-          </span>
+          </div>
         </div>
       </div>
 
       {/* Source Summary */}
       {Object.keys(sourceSummary).length > 0 && (
-        <div className="bg-surface-raised rounded-lg border border-border p-4">
-          <h3 className="font-medium text-foreground [font-size:var(--font-size-body)] mb-3">
-            Data Sources
-          </h3>
+        <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="material-symbols-outlined text-primary">database</span>
+            <h3 className="font-bold text-white">Data Sources</h3>
+          </div>
           <div className="flex flex-wrap gap-3">
             {Object.entries(sourceSummary).map(([source, count]) => (
               <div
                 key={source}
-                className="px-3 py-1.5 rounded bg-surface border border-border text-foreground [font-size:var(--font-size-small)]"
+                className="px-4 py-2 rounded-full bg-surface border border-outline-variant/20 text-sm"
               >
-                <span className="font-medium">{source}</span>
-                <span className="text-muted">: {count.toLocaleString()} posts</span>
+                <span className="font-bold text-white">{source}</span>
+                <span className="text-on-surface-variant">: {count.toLocaleString()} posts</span>
               </div>
             ))}
           </div>
@@ -320,99 +330,72 @@ export default function AdminContent() {
       )}
 
       {/* Jobs Table */}
-      <div className="bg-surface-raised rounded-lg border border-border overflow-hidden">
-        <div className="px-4 py-3 border-b border-border flex items-center justify-between">
-          <h3 className="font-medium text-foreground [font-size:var(--font-size-body)]">
-            Job History
-          </h3>
-          <span className="text-muted [font-size:var(--font-size-small)]">
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 overflow-hidden shadow-xl">
+        <div className="px-6 py-4 border-b border-outline-variant/10 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">assignment</span>
+            <h3 className="font-bold text-white">Job History</h3>
+          </div>
+          <span className="text-on-surface-variant text-sm">
             {total.toLocaleString()} total jobs
           </span>
         </div>
 
         {jobs.length === 0 ? (
           <div className="p-8 text-center">
-            <p className="text-muted [font-size:var(--font-size-body)]">
-              No jobs recorded yet.
-            </p>
-            <p className="text-muted [font-size:var(--font-size-small)] mt-1">
-              Jobs will appear here when data ingestion or processing runs.
-            </p>
+            <span className="material-symbols-outlined text-4xl text-on-surface-variant/50 mb-4">inbox</span>
+            <p className="text-on-surface-variant">No jobs recorded yet.</p>
+            <p className="text-on-surface-variant text-sm mt-1">Jobs will appear here when data ingestion or processing runs.</p>
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="bg-surface border-b border-border">
-                  <th className="px-4 py-3 text-left text-muted font-medium [font-size:var(--font-size-small)]">
-                    Job Type
-                  </th>
-                  <th className="px-4 py-3 text-left text-muted font-medium [font-size:var(--font-size-small)]">
-                    Source
-                  </th>
-                  <th className="px-4 py-3 text-left text-muted font-medium [font-size:var(--font-size-small)]">
-                    Status
-                  </th>
-                  <th className="px-4 py-3 text-left text-muted font-medium [font-size:var(--font-size-small)]">
-                    Start Time
-                  </th>
-                  <th className="px-4 py-3 text-left text-muted font-medium [font-size:var(--font-size-small)]">
-                    End Time
-                  </th>
-                  <th className="px-4 py-3 text-right text-muted font-medium [font-size:var(--font-size-small)]">
-                    Rows
-                  </th>
-                  <th className="px-4 py-3 text-left text-muted font-medium [font-size:var(--font-size-small)]">
-                    Error
-                  </th>
-                  <th className="px-4 py-3 text-center text-muted font-medium [font-size:var(--font-size-small)]">
-                    Actions
-                  </th>
+                <tr className="bg-surface border-b border-outline-variant/10">
+                  <th className="px-6 py-3 text-left text-on-surface-variant font-bold text-xs uppercase tracking-wider">Job Type</th>
+                  <th className="px-6 py-3 text-left text-on-surface-variant font-bold text-xs uppercase tracking-wider">Source</th>
+                  <th className="px-6 py-3 text-left text-on-surface-variant font-bold text-xs uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-3 text-left text-on-surface-variant font-bold text-xs uppercase tracking-wider">Start Time</th>
+                  <th className="px-6 py-3 text-left text-on-surface-variant font-bold text-xs uppercase tracking-wider">End Time</th>
+                  <th className="px-6 py-3 text-right text-on-surface-variant font-bold text-xs uppercase tracking-wider">Rows</th>
+                  <th className="px-6 py-3 text-left text-on-surface-variant font-bold text-xs uppercase tracking-wider">Error</th>
+                  <th className="px-6 py-3 text-center text-on-surface-variant font-bold text-xs uppercase tracking-wider">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {jobs.map((job) => (
                   <tr
                     key={job.id}
-                    className="border-b border-border last:border-b-0 hover:bg-surface"
+                    className="border-b border-outline-variant/10 last:border-b-0 hover:bg-surface-container transition-colors"
                   >
-                    <td className="px-4 py-3 text-foreground [font-size:var(--font-size-small)]">
-                      {job.job_type}
-                    </td>
-                    <td className="px-4 py-3 text-foreground [font-size:var(--font-size-small)]">
-                      {job.source}
-                    </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4 text-white text-sm">{job.job_type}</td>
+                    <td className="px-6 py-4 text-white text-sm">{job.source}</td>
+                    <td className="px-6 py-4">
                       <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${statusBadgeStyles(
+                        className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-bold border ${statusBadgeStyles(
                           job.status
                         )}`}
                       >
+                        <span className="w-1.5 h-1.5 rounded-full bg-current" />
                         {job.status}
                       </span>
                     </td>
-                    <td className="px-4 py-3 text-muted [font-size:var(--font-size-small)]">
-                      {formatDateTime(job.started_at)}
-                    </td>
-                    <td className="px-4 py-3 text-muted [font-size:var(--font-size-small)]">
-                      {job.finished_at ? formatDateTime(job.finished_at) : '—'}
-                    </td>
-                    <td className="px-4 py-3 text-right text-foreground [font-size:var(--font-size-small)]">
-                      {job.row_count.toLocaleString()}
-                    </td>
-                    <td className="px-4 py-3">
+                    <td className="px-6 py-4 text-on-surface-variant text-sm">{formatDateTime(job.started_at)}</td>
+                    <td className="px-6 py-4 text-on-surface-variant text-sm">{job.finished_at ? formatDateTime(job.finished_at) : '—'}</td>
+                    <td className="px-6 py-4 text-right text-white text-sm">{job.row_count.toLocaleString()}</td>
+                    <td className="px-6 py-4">
                       {job.error_summary && job.error_summary.length > 0 ? (
                         <span
-                          className="text-sentiment-negative [font-size:var(--font-size-small)]"
+                          className="text-error text-sm"
                           title={job.error_summary[0]}
                         >
                           {truncateError(job.error_summary[0])}
                         </span>
                       ) : (
-                        <span className="text-muted [font-size:var(--font-size-small)]">—</span>
+                        <span className="text-on-surface-variant text-sm">—</span>
                       )}
                     </td>
-                    <td className="px-4 py-3 text-center">
+                    <td className="px-6 py-4 text-center">
                       {canRetry(job.status) && (
                         <div className="flex flex-col items-center gap-1">
                           <button
@@ -420,12 +403,13 @@ export default function AdminContent() {
                             aria-label={`Retry job ${job.id}`}
                             onClick={() => handleRetry(job.id)}
                             disabled={retrying.has(job.id) || loading}
-                            className="px-3 py-1.5 rounded border border-border bg-surface text-foreground hover:bg-surface-raised [font-size:var(--font-size-small)] disabled:opacity-50"
+                            className="px-3 py-1.5 rounded-full border border-outline-variant/20 bg-surface text-sm text-white hover:bg-surface-container-high disabled:opacity-50 flex items-center gap-1"
                           >
-                            {retrying.has(job.id) ? 'Retrying…' : 'Retry'}
+                            <span className="material-symbols-outlined text-xs">refresh</span>
+                            {retrying.has(job.id) ? 'Retrying...' : 'Retry'}
                           </button>
                           {retryError[job.id] && (
-                            <span className="text-sentiment-negative [font-size:var(--font-size-small)]">
+                            <span className="text-error text-xs">
                               {retryError[job.id]}
                             </span>
                           )}
@@ -441,25 +425,24 @@ export default function AdminContent() {
       </div>
 
       {/* Demo Reset */}
-      <div className="bg-surface-raised rounded-lg border border-border p-4">
-        <h3 className="font-medium text-foreground [font-size:var(--font-size-body)] mb-1">
-          Demo Reset
-        </h3>
-        <p className="text-muted [font-size:var(--font-size-small)] mb-3">
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <div className="flex items-center gap-2 mb-4">
+          <span className="material-symbols-outlined text-primary">restart_alt</span>
+          <h3 className="font-bold text-white">Demo Reset</h3>
+        </div>
+        <p className="text-on-surface-variant text-sm mb-4">
           Clear processed posts and job records to start a fresh demo run.
           Raw posts can optionally be preserved to avoid re-ingestion.
         </p>
 
-        <label className="flex items-center gap-2 mb-4 cursor-pointer select-none">
+        <label className="flex items-center gap-3 mb-6 cursor-pointer">
           <input
             type="checkbox"
             checked={preserveRaw}
             onChange={(e) => setPreserveRaw(e.target.checked)}
-            className="accent-primary"
+            className="accent-secondary"
           />
-          <span className="[font-size:var(--font-size-small)] text-foreground">
-            Preserve raw posts (recommended — skip re-ingestion)
-          </span>
+          <span className="text-sm text-white">Preserve raw posts (recommended — skip re-ingestion)</span>
         </label>
 
         {!resetConfirm ? (
@@ -467,8 +450,9 @@ export default function AdminContent() {
             type="button"
             onClick={handleResetConfirm}
             disabled={resetting}
-            className="px-3 py-1.5 rounded border border-sentiment-negative text-sentiment-negative hover:bg-sentiment-negative/10 [font-size:var(--font-size-small)] disabled:opacity-50"
+            className="px-4 py-2 rounded-full border border-error/30 text-error hover:bg-error/10 text-sm font-medium disabled:opacity-50 flex items-center gap-2"
           >
+            <span className="material-symbols-outlined text-sm">delete_forever</span>
             Reset Demo Data
           </button>
         ) : (
@@ -477,15 +461,16 @@ export default function AdminContent() {
               type="button"
               onClick={handleReset}
               disabled={resetting}
-              className="px-3 py-1.5 rounded border border-sentiment-negative bg-sentiment-negative/10 text-sentiment-negative hover:bg-sentiment-negative/20 [font-size:var(--font-size-small)] disabled:opacity-50"
+              className="px-4 py-2 rounded-full border border-error bg-error/10 text-error hover:bg-error/20 text-sm font-medium disabled:opacity-50 flex items-center gap-2"
             >
-              {resetting ? 'Resetting…' : 'Confirm Reset'}
+              <span className="material-symbols-outlined text-sm">warning</span>
+              {resetting ? 'Resetting...' : 'Confirm Reset'}
             </button>
             <button
               type="button"
               onClick={() => setResetConfirm(false)}
               disabled={resetting}
-              className="px-3 py-1.5 rounded border border-border bg-surface text-foreground hover:bg-surface-raised [font-size:var(--font-size-small)] disabled:opacity-50"
+              className="px-4 py-2 rounded-full border border-outline-variant/20 text-white hover:bg-surface-container-high text-sm font-medium disabled:opacity-50"
             >
               Cancel
             </button>
@@ -493,16 +478,20 @@ export default function AdminContent() {
         )}
 
         {resetResult && (
-          <p className="mt-3 text-sentiment-positive [font-size:var(--font-size-small)]">
-            {resetResult.message} ({resetResult.deleted_processed_posts} processed posts,{' '}
-            {resetResult.deleted_jobs} jobs
-            {resetResult.deleted_raw_posts > 0 ? `, ${resetResult.deleted_raw_posts} raw posts` : ''} cleared)
-          </p>
+          <div className="mt-4 flex items-center gap-2 text-secondary">
+            <span className="material-symbols-outlined">check_circle</span>
+            <p className="text-sm">
+              {resetResult.message} ({resetResult.deleted_processed_posts} processed posts,{' '}
+              {resetResult.deleted_jobs} jobs
+              {resetResult.deleted_raw_posts > 0 ? `, ${resetResult.deleted_raw_posts} raw posts` : ''} cleared)
+            </p>
+          </div>
         )}
         {resetError && (
-          <p className="mt-3 text-sentiment-negative [font-size:var(--font-size-small)]">
-            {resetError}
-          </p>
+          <div className="mt-4 flex items-center gap-2 text-error">
+            <span className="material-symbols-outlined">error</span>
+            <p className="text-sm">{resetError}</p>
+          </div>
         )}
       </div>
     </div>

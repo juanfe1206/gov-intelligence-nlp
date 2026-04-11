@@ -123,16 +123,19 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
 
   if (loading) {
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">Loading topics…</p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <div className="flex items-center gap-2 text-on-surface-variant">
+          <span className="material-symbols-outlined animate-spin">progress_activity</span>
+          <span>Loading topics…</span>
+        </div>
       </div>
     )
   }
 
   if (error) {
     return (
-      <div className="col-span-12">
-        <p className="text-sentiment-negative [font-size:var(--font-size-body)]">{error}</p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <p className="text-error">{error}</p>
       </div>
     )
   }
@@ -140,44 +143,46 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
   if (displayItems.length === 0) {
     if (isDrillDown) {
       return (
-        <div className="col-span-12 bg-surface-raised rounded-lg border border-border p-4">
+        <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
           <div className="flex items-center gap-3 mb-4">
             <button
               type="button"
               onClick={onClearTopic}
-              className="text-primary [font-size:var(--font-size-small)] hover:underline"
+              className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
             >
-              ← All topics
+              <span className="material-symbols-outlined text-sm">arrow_back</span>
+              All topics
             </button>
-            <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">{panelTitle}</h3>
+            <h3 className="font-bold text-white text-lg">{panelTitle}</h3>
           </div>
-          <p className="text-muted [font-size:var(--font-size-body)]">{emptyMessage}</p>
+          <p className="text-on-surface-variant">{emptyMessage}</p>
         </div>
       )
     }
     return (
-      <div className="col-span-12">
-        <p className="text-muted [font-size:var(--font-size-body)]">{emptyMessage}</p>
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6">
+        <p className="text-on-surface-variant">{emptyMessage}</p>
       </div>
     )
   }
 
   return (
-    <div className="col-span-12 bg-surface-raised rounded-lg border border-border p-4">
-      <div className="flex items-center gap-3 mb-4">
+    <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+      <div className="flex items-center gap-3 mb-6">
         {isDrillDown && (
           <button
             type="button"
             onClick={onClearTopic}
-            className="text-primary [font-size:var(--font-size-small)] hover:underline"
+            className="text-primary text-sm font-medium hover:underline flex items-center gap-1"
           >
-            ← All topics
+            <span className="material-symbols-outlined text-sm">arrow_back</span>
+            All topics
           </button>
         )}
-        <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">{panelTitle}</h3>
+        <h3 className="font-bold text-white text-lg">{panelTitle}</h3>
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-3">
         {displayItems.map((item) => {
           const total = item.positive + item.neutral + item.negative || 1
           const posW = Math.round((item.positive / total) * 100)
@@ -187,33 +192,27 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
           return (
             <div
               key={item.name}
-              className={`w-full text-left rounded border border-border p-3 transition-colors ${
-                !isDrillDown ? 'hover:border-primary hover:bg-surface' : ''
+              className={`w-full text-left rounded-lg border border-outline-variant/10 p-4 transition-all duration-200 ${
+                !isDrillDown ? 'hover:border-primary/50 hover:bg-surface-container cursor-pointer' : ''
               }`}
+              onClick={() => !isDrillDown && onTopicSelect(item.name)}
             >
-              <div className="flex items-center justify-between mb-1">
-                <button
-                  type="button"
-                  onClick={() => !isDrillDown && onTopicSelect(item.name)}
-                  disabled={isDrillDown}
-                  className={`flex-1 text-left ${!isDrillDown ? 'cursor-pointer' : 'cursor-default'}`}
-                >
-                  <span className="font-medium text-foreground [font-size:var(--font-size-body)]">
-                    {item.label}
-                  </span>
-                </button>
+              <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
+                  <span className="font-medium text-white">{item.label}</span>
                   {!isDrillDown && item.name === mostNegativeName && (
-                    <span className="px-1.5 py-0.5 rounded bg-sentiment-negative/10 text-sentiment-negative [font-size:var(--font-size-small)]">
+                    <span className="px-2 py-0.5 rounded-full bg-error/10 text-error text-xs font-bold">
                       Most negative
                     </span>
                   )}
                   {!isDrillDown && item.name === mostPositiveName && item.name !== mostNegativeName && (
-                    <span className="px-1.5 py-0.5 rounded bg-sentiment-positive/10 text-sentiment-positive [font-size:var(--font-size-small)]">
+                    <span className="px-2 py-0.5 rounded-full bg-secondary/10 text-secondary text-xs font-bold">
                       Most positive
                     </span>
                   )}
-                  <span className="text-muted [font-size:var(--font-size-small)]">
+                </div>
+                <div className="flex items-center gap-3">
+                  <span className="text-on-surface-variant text-sm">
                     {item.count.toLocaleString()} posts
                   </span>
                   {/* Q&A investigate button — top-level only */}
@@ -225,30 +224,31 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
                         const q = encodeURIComponent(`What are people saying about ${item.label}?`)
                         router.push(`/qa?topic=${encodeURIComponent(item.name)}&question=${q}`)
                       }}
-                      className="px-2 py-0.5 rounded border border-border text-muted hover:text-foreground hover:border-primary [font-size:var(--font-size-small)] whitespace-nowrap"
+                      className="px-3 py-1 rounded-full text-xs font-medium border border-outline-variant/20 text-on-surface-variant hover:text-white hover:border-primary transition-colors flex items-center gap-1"
                     >
-                      → Q&A
+                      <span className="material-symbols-outlined text-xs">chat</span>
+                      Q&A
                     </button>
                   )}
                 </div>
               </div>
 
               {/* Sentiment bar */}
-              <div className="flex h-2.5 rounded overflow-hidden gap-px">
+              <div className="flex h-2 rounded-full overflow-hidden">
                 {posW > 0 && (
-                  <div className="bg-sentiment-positive" style={{ width: `${posW}%` }} />
+                  <div className="bg-secondary" style={{ width: `${posW}%` }} />
                 )}
                 {neuW > 0 && (
-                  <div className="bg-sentiment-warning" style={{ width: `${neuW}%` }} />
+                  <div className="bg-tertiary" style={{ width: `${neuW}%` }} />
                 )}
                 {negW > 0 && (
-                  <div className="bg-sentiment-negative" style={{ width: `${negW}%` }} />
+                  <div className="bg-error" style={{ width: `${negW}%` }} />
                 )}
               </div>
-              <div className="flex gap-3 mt-1 [font-size:var(--font-size-small)]">
-                <span className="text-sentiment-positive">{posW}%</span>
-                <span className="text-sentiment-warning">{neuW}%</span>
-                <span className="text-sentiment-negative">{negW}%</span>
+              <div className="flex gap-4 mt-2 text-xs">
+                <span className="text-secondary font-medium">{posW}% Positive</span>
+                <span className="text-tertiary font-medium">{neuW}% Neutral</span>
+                <span className="text-error font-medium">{negW}% Negative</span>
               </div>
             </div>
           )

@@ -78,7 +78,7 @@ function TimeRangeSelect({ startDate, endDate, onChange }: TimeRangeProps) {
           onChange(s, en)
         }
       }}
-      className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+      className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary"
     >
       {PRESETS.map(({ label, days }) => (
         <option key={days} value={days}>{label}</option>
@@ -144,11 +144,11 @@ export default function FilterBar({ filters, onChange }: Props) {
     filters.endDate !== defaultDates.endDate
 
   return (
-    <div className="col-span-12 flex flex-wrap gap-2 items-center">
+    <div className="flex flex-wrap gap-3 items-center">
       <select
         value={filters.topic}
         onChange={(e) => handleTopicChange(e.target.value)}
-        className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+        className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary"
       >
         <option value="">All Topics</option>
         {taxonomy?.topics.map((t) => (
@@ -160,7 +160,7 @@ export default function FilterBar({ filters, onChange }: Props) {
         value={filters.subtopic}
         onChange={(e) => onChange({ ...filters, subtopic: e.target.value })}
         disabled={!filters.topic}
-        className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground disabled:opacity-50"
+        className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <option value="">All Subtopics</option>
         {subtopics.map((s) => (
@@ -171,7 +171,7 @@ export default function FilterBar({ filters, onChange }: Props) {
       <select
         value={filters.target}
         onChange={(e) => onChange({ ...filters, target: e.target.value })}
-        className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+        className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary"
       >
         <option value="">All Parties / Leaders</option>
         {targets.map((t) => (
@@ -182,7 +182,7 @@ export default function FilterBar({ filters, onChange }: Props) {
       <select
         value={filters.platform}
         onChange={(e) => onChange({ ...filters, platform: e.target.value })}
-        className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+        className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary"
       >
         <option value="">All Platforms</option>
         {platforms.map((p) => (
@@ -194,31 +194,31 @@ export default function FilterBar({ filters, onChange }: Props) {
       <div className="relative group">
         <button
           type="button"
-          className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground min-w-[160px] text-left flex items-center justify-between"
+          className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary min-w-[160px] text-left flex items-center justify-between gap-2"
         >
           <span>
             {(filters.selectedParties?.length ?? 0) === 0
               ? 'Compare Parties'
               : `${filters.selectedParties.length} selected`}
           </span>
-          <span className="ml-2">▼</span>
+          <span className="material-symbols-outlined text-sm">expand_more</span>
         </button>
-        <div className="absolute top-full left-0 mt-1 w-64 bg-surface border border-border rounded shadow-lg hidden group-hover:block z-50 p-2">
-          <p className="text-muted [font-size:var(--font-size-small)] mb-2 px-2">Select parties to compare:</p>
+        <div className="absolute top-full left-0 mt-2 w-64 bg-surface-container-high border border-outline-variant/20 rounded-xl shadow-2xl hidden group-hover:block z-50 p-3">
+          <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-2 px-2">Select parties to compare:</p>
           {targets.map((t) => {
             const isSelected = filters.selectedParties?.includes(t.name) ?? false
             return (
               <label
                 key={t.name}
-                className="flex items-center gap-2 px-2 py-1 hover:bg-surface-raised cursor-pointer rounded"
+                className="flex items-center gap-3 px-2 py-1.5 hover:bg-surface-container rounded-lg cursor-pointer"
               >
                 <input
                   type="checkbox"
                   checked={isSelected}
                   onChange={() => handlePartyToggle(t.name)}
-                  className="rounded"
+                  className="rounded border-outline-variant"
                 />
-                <span className="[font-size:var(--font-size-small)]">{t.label}</span>
+                <span className="text-sm text-on-surface">{t.label}</span>
               </label>
             )
           })}
@@ -234,8 +234,9 @@ export default function FilterBar({ filters, onChange }: Props) {
       {hasActiveFilters && (
         <button
           onClick={handleClear}
-          className="px-2 py-1 border border-border rounded text-muted hover:text-foreground [font-size:var(--font-size-small)]"
+          className="px-4 py-2 rounded-full text-sm font-medium border border-outline-variant/20 text-on-surface-variant hover:text-white hover:bg-surface-container-high transition-colors flex items-center gap-2"
         >
+          <span className="material-symbols-outlined text-sm">close</span>
           Clear filters
         </button>
       )}

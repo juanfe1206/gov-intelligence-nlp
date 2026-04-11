@@ -8,6 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.session import get_db
 from app.qa import service as qa_service
 from app.qa.answer import generate_answer
+from app.qa.insights import generate_structured_insight
 from app.qa.schemas import QARequest, QAResponse
 
 logger = logging.getLogger(__name__)
@@ -50,5 +51,13 @@ async def ask_question(
         )
         qa_result.summary = summary
         qa_result.answer_error = answer_error
+
+        # Generate structured insight for dynamic visualizations
+        structured = await generate_structured_insight(
+            question=qa_result.question,
+            retrieved_posts=qa_result.retrieved_posts,
+            metrics=qa_result.metrics,
+        )
+        qa_result.structured_insight = structured
 
     return qa_result

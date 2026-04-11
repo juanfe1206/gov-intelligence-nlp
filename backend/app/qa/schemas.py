@@ -5,6 +5,62 @@ from datetime import date
 from pydantic import BaseModel
 
 
+class StatItem(BaseModel):
+    """A single statistic with context for display."""
+    label: str
+    value: str | int | float
+    trend: str | None = None  # "up", "down", "neutral"
+    trend_value: str | None = None  # e.g., "+15%"
+    context: str | None = None  # brief explanation
+
+
+class TrendItem(BaseModel):
+    """A trending topic or theme."""
+    label: str
+    direction: str  # "rising", "falling", "stable"
+    magnitude: str  # "high", "medium", "low"
+    volume_change: str | None = None  # e.g., "+45%"
+
+
+class ComparisonItem(BaseModel):
+    """Item for bar chart comparisons."""
+    label: str
+    value: float
+    color: str | None = None  # "positive", "negative", "neutral", "primary"
+
+
+class TimelinePoint(BaseModel):
+    """Point for sparkline/timeline visualization."""
+    label: str  # date or period label
+    value: float
+    sentiment: str | None = None  # optional sentiment at this point
+
+
+class KeyTakeaway(BaseModel):
+    """A key insight bullet point."""
+    type: str  # "positive", "negative", "neutral", "warning", "opportunity"
+    text: str
+
+
+class RecommendedAction(BaseModel):
+    """Actionable recommendation."""
+    priority: str  # "high", "medium", "low"
+    text: str
+    rationale: str | None = None
+
+
+class StructuredInsight(BaseModel):
+    """Structured data for dynamic visualizations in the Q&A response."""
+    headline: str  # One-sentence summary
+    key_stats: list[StatItem] = []  # Key metrics with trends
+    sentiment_summary: dict[str, str] | None = None  # {"positive": "45%", "neutral": "30%", "negative": "25%"}
+    trends: list[TrendItem] = []  # Trending topics
+    comparison_data: list[ComparisonItem] | None = None  # For bar charts
+    timeline_data: list[TimelinePoint] | None = None  # For sparklines
+    key_takeaways: list[KeyTakeaway] = []  # 2-3 bullet points
+    recommended_actions: list[RecommendedAction] = []  # Action items
+
+
 class QAFilters(BaseModel):
     """Optional filter parameters for Q&A retrieval."""
     topic: str | None = None
@@ -73,3 +129,4 @@ class QAResponse(BaseModel):
     summary: str | None = None          # LLM-generated narrative (None if skipped or failed)
     answer_error: str | None = None     # Degradation message (None unless LLM failed)
     clusters: list[NarrativeCluster] = []       # 2-4 narrative clusters (empty when insufficient_data)
+    structured_insight: StructuredInsight | None = None  # Structured data for visualizations

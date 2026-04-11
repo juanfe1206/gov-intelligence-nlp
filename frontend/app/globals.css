@@ -1,76 +1,166 @@
+/* Import Plus Jakarta Sans font */
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+
 @import "tailwindcss";
 
-/* CSS custom properties for light mode */
+/* Aura Intelligence Design System - Dark Theme Tokens */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  /* Core Surface Colors */
+  --background: #111128;
+  --foreground: #e2dfff;
+  --surface: #111128;
+  --surface-dim: #111128;
+  --surface-bright: #373750;
+  --surface-container-lowest: #0b0b22;
+  --surface-container-low: #191931;
+  --surface-container: #1d1d35;
+  --surface-container-high: #282840;
+  --surface-container-highest: #32324b;
+  --surface-variant: #32324b;
+  --on-surface: #e2dfff;
+  --on-surface-variant: #cbc3d9;
+  --inverse-surface: #e2dfff;
+  --inverse-on-surface: #2e2e47;
 
-/* Tailwind v4 design tokens — generates utility classes like text-primary, bg-sentiment-positive */
-@theme {
-  /* Primary accent — deep blue */
-  --color-primary: #1d4ed8;          /* blue-700 */
-  --color-primary-hover: #1e40af;    /* blue-800 */
-  --color-primary-foreground: #ffffff;
+  /* Primary - Purple */
+  --primary: #cfbdff;
+  --primary-container: #6200ee;
+  --on-primary: #3a0093;
+  --on-primary-container: #d0beff;
+  --primary-fixed: #e8ddff;
+  --primary-fixed-dim: #cfbdff;
+  --on-primary-fixed: #22005d;
+  --on-primary-fixed-variant: #5300cd;
+  --inverse-primary: #6d23f9;
+  --surface-tint: #cfbdff;
 
-  /* Neutral blue-gray base */
-  --color-surface: #f8fafc;          /* slate-50 */
-  --color-surface-raised: #ffffff;
-  --color-border: #e2e8f0;           /* slate-200 */
-  --color-muted: #64748b;            /* slate-500 */
+  /* Secondary - Teal */
+  --secondary: #48ddbd;
+  --secondary-container: #00bb9d;
+  --on-secondary: #00382d;
+  --on-secondary-container: #004438;
+  --secondary-fixed: #6bfad9;
+  --secondary-fixed-dim: #48ddbd;
+  --on-secondary-fixed: #002019;
+  --on-secondary-fixed-variant: #005143;
 
-  /* Semantic sentiment colors */
-  --color-sentiment-positive: #16a34a;   /* green-600 */
-  --color-sentiment-warning: #d97706;    /* amber-600 */
-  --color-sentiment-negative: #dc2626;   /* red-600 */
+  /* Tertiary - Amber/Yellow for Neutral (clearly distinct from red) */
+  --tertiary: #fbbf24;
+  --tertiary-container: #b45309;
+  --on-tertiary: #451a03;
+  --on-tertiary-container: #fde68a;
+  --tertiary-fixed: #fcd34d;
+  --tertiary-fixed-dim: #fbbf24;
+  --on-tertiary-fixed: #451a03;
+  --on-tertiary-fixed-variant: #92400e;
+
+  /* Error - Pure Red for Negative (clearly distinct from amber) */
+  --error: #ef4444;
+  --error-container: #991b1b;
+  --on-error: #fef2f2;
+  --on-error-container: #fca5a5;
+
+  /* Outline/Border */
+  --outline: #948da2;
+  --outline-variant: #494456;
 
   /* Typography */
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  --font-size-h1: 2rem;      /* 32px */
-  --line-height-h1: 2.5rem;  /* 40px */
-  --font-size-h2: 1.5rem;    /* 24px */
-  --line-height-h2: 2rem;    /* 32px */
-  --font-size-h3: 1.25rem;   /* 20px */
-  --line-height-h3: 1.75rem; /* 28px */
-  --font-size-h4: 1.125rem;  /* 18px */
-  --line-height-h4: 1.5rem;  /* 24px */
-  --font-size-body: 1rem;    /* 16px */
-  --line-height-body: 1.5rem;/* 24px */
-  --font-size-small: 0.875rem;   /* 14px */
-  --line-height-small: 1.25rem;  /* 20px */
+  --font-sans: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-headline: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+  --font-label: 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
 
-  /* Shell layout dimensions */
-  --spacing-nav-width: 16rem;   /* 256px left nav width */
-  --spacing-header-height: 4rem; /* 64px top header height */
+  /* Font Sizes */
+  --font-size-display-lg: 3.5rem;
+  --font-size-display: 2.5rem;
+  --font-size-h1: 2rem;
+  --font-size-h2: 1.5rem;
+  --font-size-h3: 1.25rem;
+  --font-size-h4: 1.125rem;
+  --font-size-body: 1rem;
+  --font-size-body-sm: 0.875rem;
+  --font-size-label: 0.75rem;
+  --font-size-label-sm: 0.6875rem;
 
-  /* Chart canvas tokens */
-  --chart-grid: #e2e8f0;
-  --chart-axis: #64748b;
-  --chart-tooltip-border: #e2e8f0;
-  --chart-neutral: #d97706;
+  /* Line Heights */
+  --line-height-display: 1.1;
+  --line-height-h1: 2.5rem;
+  --line-height-h2: 2rem;
+  --line-height-h3: 1.75rem;
+  --line-height-h4: 1.5rem;
+  --line-height-body: 1.5rem;
+  --line-height-body-sm: 1.25rem;
+
+  /* Layout Dimensions */
+  --spacing-nav-width: 18rem;
+  --spacing-header-height: 5rem;
+
+  /* Border Radius */
+  --radius-sm: 0.5rem;
+  --radius-md: 1rem;
+  --radius-lg: 2rem;
+  --radius-xl: 3rem;
+  --radius-full: 9999px;
+
+  /* Legacy sentiment colors - NOW WITH CLEAR DISTINCTION */
+  --color-sentiment-positive: #48ddbd;  /* Teal - Positive */
+  --color-sentiment-warning: #fbbf24;   /* Amber - Neutral (distinct from red) */
+  --color-sentiment-negative: #ef4444;  /* Pure Red - Negative (distinct from amber) */
+
+  /* Chart colors */
+  --chart-grid: #282840;
+  --chart-axis: #cbc3d9;
+  --chart-tooltip-border: #494456;
+  --chart-neutral: #cfbdff;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-dim: var(--surface-dim);
+  --color-surface-bright: var(--surface-bright);
+  --color-surface-container: var(--surface-container);
+  --color-surface-container-low: var(--surface-container-low);
+  --color-surface-container-lowest: var(--surface-container-lowest);
+  --color-surface-container-high: var(--surface-container-high);
+  --color-surface-container-highest: var(--surface-container-highest);
+  --color-surface-variant: var(--surface-variant);
+  --color-surface-raised: var(--surface-container-high);
+  --color-border: var(--outline-variant);
+  --color-muted: var(--on-surface-variant);
+
+  /* Primary colors */
+  --color-primary: var(--primary);
+  --color-primary-container: var(--primary-container);
+  --color-on-primary: var(--on-primary);
+  --color-on-primary-container: var(--on-primary-container);
+
+  /* Secondary colors */
+  --color-secondary: var(--secondary);
+  --color-secondary-container: var(--secondary-container);
+  --color-on-secondary: var(--on-secondary);
+  --color-on-secondary-container: var(--on-secondary-container);
+
+  /* Tertiary colors */
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-container: var(--tertiary-container);
+
+  /* Outline */
+  --color-outline: var(--outline);
+  --color-outline-variant: var(--outline-variant);
+
+  /* Error */
+  --color-error: var(--error);
+  --color-error-container: var(--error-container);
+
+  /* Typography */
+  --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --color-surface: #111827;        /* slate-900 */
-    --color-surface-raised: #1f2937; /* slate-800 */
-    --color-border: #334155;         /* slate-700 */
-    --color-muted: #94a3b8;          /* slate-400 */
-
-    /* Chart canvas tokens — dark mode overrides */
-    --chart-grid: #334155;
-    --chart-axis: #94a3b8;
-    --chart-tooltip-border: #475569;
-    --chart-neutral: #f59e0b;
-  }
+/* Dark mode is default for Aura Intelligence */
+html {
+  color-scheme: dark;
 }
 
 body {
@@ -79,8 +169,70 @@ body {
   font-family: var(--font-sans);
 }
 
-/* Ensure all interactive elements have visible focus rings by default (WCAG AA) */
+/* Material Symbols Outlined font */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Glassmorphism utility */
+.glass {
+  backdrop-filter: blur(24px);
+  background: rgba(25, 25, 49, 0.7);
+}
+
+/* Glass panel utility */
+.glass-panel {
+  backdrop-filter: blur(24px);
+  background: rgba(50, 50, 75, 0.3);
+}
+
+/* Gradient text utility */
+.gradient-text {
+  background: linear-gradient(135deg, #6200EE, #cfbdff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Focus visible styles */
 *:focus-visible {
-  outline: 2px solid var(--color-primary);
+  outline: 2px solid var(--primary);
   outline-offset: 2px;
+}
+
+/* Scrollbar styling for dark theme */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface-container-low);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--outline-variant);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--outline);
+}
+
+/* Selection styling */
+::selection {
+  background: var(--primary-container);
+  color: var(--on-primary-container);
 }

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          "colors": {
+                  "inverse-surface": "#e2dfff",
+                  "on-error": "#690005",
+                  "on-surface-variant": "#cbc3d9",
+                  "surface-variant": "#32324b",
+                  "secondary-fixed": "#6bfad9",
+                  "on-secondary": "#00382d",
+                  "on-tertiary-container": "#ffb79d",
+                  "tertiary": "#ffb59a",
+                  "secondary": "#48ddbd",
+                  "surface-container": "#1d1d35",
+                  "surface": "#111128",
+                  "on-background": "#e2dfff",
+                  "tertiary-fixed-dim": "#ffb59a",
+                  "on-primary-container": "#d0beff",
+                  "inverse-primary": "#6d23f9",
+                  "background": "#111128",
+                  "on-secondary-container": "#004438",
+                  "on-surface": "#e2dfff",
+                  "inverse-on-surface": "#2e2e47",
+                  "secondary-container": "#00bb9d",
+                  "primary-fixed": "#e8ddff",
+                  "on-primary": "#3a0093",
+                  "surface-tint": "#cfbdff",
+                  "on-secondary-fixed": "#002019",
+                  "tertiary-container": "#963200",
+                  "primary-container": "#6200ee",
+                  "on-secondary-fixed-variant": "#005143",
+                  "surface-container-high": "#282840",
+                  "surface-container-low": "#191931",
+                  "error": "#ffb4ab",
+                  "on-primary-fixed": "#22005d",
+                  "on-tertiary": "#5b1b00",
+                  "on-primary-fixed-variant": "#5300cd",
+                  "surface-container-lowest": "#0b0b22",
+                  "primary": "#cfbdff",
+                  "surface-bright": "#373750",
+                  "secondary-fixed-dim": "#48ddbd",
+                  "outline-variant": "#494456",
+                  "surface-dim": "#111128",
+                  "primary-fixed-dim": "#cfbdff",
+                  "outline": "#948da2",
+                  "tertiary-fixed": "#ffdbcf",
+                  "on-tertiary-fixed-variant": "#802a00",
+                  "on-tertiary-fixed": "#380d00",
+                  "surface-container-highest": "#32324b",
+                  "error-container": "#93000a",
+                  "on-error-container": "#ffdad6"
+          },
+          "borderRadius": {
+                  "DEFAULT": "1rem",
+                  "lg": "2rem",
+                  "xl": "3rem",
+                  "full": "9999px"
+          },
+          "fontFamily": {
+                  "headline": ["Plus Jakarta Sans"],
+                  "body": ["Plus Jakarta Sans"],
+                  "label": ["Plus Jakarta Sans"]
+          }
+        },
+      },
+    }
+  </script>
+<style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+    .yaml-line-numbers { border-right: 1px solid #494456; }
+    .taxonomy-node::before { content: ""; position: absolute; left: -1rem; top: 50%; width: 1rem; border-top: 1px solid #494456; }
+    .taxonomy-branch::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; border-left: 1px solid #494456; }
+  </style>
+</head>
+<body class="bg-surface text-on-surface overflow-hidden">
+<!-- SideNavBar Component -->
+<aside class="fixed left-0 top-0 h-screen flex flex-col p-6 z-40 bg-[#111128] w-72 h-screen rounded-r-none border-r-0 font-['Plus_Jakarta_Sans'] font-medium text-sm">
+<div class="text-xl font-extrabold text-white mb-8">Aura Intelligence</div>
+<nav class="flex-1 space-y-2">
+<div class="flex items-center gap-3 text-[#cbc3d9] px-6 py-3 hover:bg-[#282840] hover:text-white rounded-full transition-colors cursor-pointer active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined">dashboard</span>
+<span>Dashboard</span>
+</div>
+<div class="flex items-center gap-3 text-[#cbc3d9] px-6 py-3 hover:bg-[#282840] hover:text-white rounded-full transition-colors cursor-pointer active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined">analytics</span>
+<span>Topic Analysis</span>
+</div>
+<div class="flex items-center gap-3 text-[#cbc3d9] px-6 py-3 hover:bg-[#282840] hover:text-white rounded-full transition-colors cursor-pointer active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined">chat_bubble</span>
+<span>Q&amp;A</span>
+</div>
+<div class="flex items-center gap-3 bg-[#6200EE] text-white rounded-full px-6 py-3 shadow-[0_0_20px_rgba(98,0,238,0.3)] cursor-pointer active:scale-[0.98] transition-transform">
+<span class="material-symbols-outlined">settings</span>
+<span>Configuration</span>
+</div>
+</nav>
+<div class="mt-auto space-y-2 pt-6">
+<button class="w-full bg-primary-container text-white py-3 rounded-full font-bold mb-6 shadow-lg shadow-primary-container/20">
+        New Briefing
+      </button>
+<div class="flex items-center gap-3 text-[#cbc3d9] px-6 py-3 hover:bg-[#282840] hover:text-white rounded-full transition-colors cursor-pointer">
+<span class="material-symbols-outlined">help_outline</span>
+<span>Support</span>
+</div>
+<div class="flex items-center gap-3 text-[#cbc3d9] px-6 py-3 hover:bg-[#282840] hover:text-white rounded-full transition-colors cursor-pointer">
+<span class="material-symbols-outlined">logout</span>
+<span>Sign Out</span>
+</div>
+</div>
+</aside>
+<!-- Main Content Canvas -->
+<main class="ml-72 min-h-screen flex flex-col relative bg-surface">
+<!-- TopNavBar Component -->
+<header class="flex justify-between items-center w-full px-8 h-20 sticky top-0 z-50 bg-[#111128]/70 backdrop-blur-3xl bg-[#191931] no-border tonal-shift shadow-[0_0_40px_rgba(98,0,238,0.06)] font-['Plus_Jakarta_Sans'] tracking-tight font-medium">
+<div class="flex items-center gap-8">
+<div class="text-lg font-bold tracking-[-0.02em] text-white">Gov-Intelligence-NLP</div>
+<div class="flex gap-6 text-sm">
+<span class="text-white border-b-2 border-[#00BB9D] pb-1 cursor-pointer">System Configuration</span>
+<span class="text-[#cbc3d9] hover:text-white transition-all cursor-pointer">Data Sources</span>
+<span class="text-[#cbc3d9] hover:text-white transition-all cursor-pointer">Model Tuning</span>
+</div>
+</div>
+<div class="flex items-center gap-6">
+<div class="flex items-center gap-2 px-3 py-1 bg-secondary-container/10 rounded-full border border-secondary-container/20">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+<span class="text-xs text-secondary font-bold">System Status: Active</span>
+</div>
+<div class="flex items-center gap-4 text-[#cbc3d9]">
+<span class="material-symbols-outlined cursor-pointer hover:text-white">notifications</span>
+<span class="material-symbols-outlined cursor-pointer hover:text-white">settings</span>
+<div class="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high border border-outline/20">
+<img alt="User Profile Avatar" data-alt="close-up professional corporate portrait of a tech executive with neutral background and soft studio lighting" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGzH-yY4sGsD07Ctcm7fQNGjnwbqB3hEEWkDu2_MiNaS0DxWBR2JmypzqJOey3e8kN8W6LaHGoiOzr7kc3hB6YkLwgrMn6hD1_q7u0g5vImjtb8-35Gpt7F_tL2wHND6NqFSqH2UQY5CPOyS0VunjVcZh9J_76Wb4FVva9FD4Hgf7z5R1p4diTumam4F8dVqjEcaUFhoupAG1kS9fMRqvKS-HeOSGX0Zoe-0U6ExIHFfqfaUM2Fo7ysKRWOPW0gkj7DPEG9P23fWNf"/>
+</div>
+</div>
+</div>
+</header>
+<!-- Page Content -->
+<div class="flex-1 p-8 overflow-y-auto space-y-8">
+<!-- Editorial Header Section -->
+<section class="max-w-6xl">
+<h1 class="text-5xl font-extrabold tracking-tight text-white mb-2">Engine Architecture</h1>
+<p class="text-on-surface-variant max-w-2xl text-lg">Define sovereign NLP taxonomies and ingestion logic. Manage the ontological structure of the intelligence engine.</p>
+</section>
+<!-- Grid Layout -->
+<div class="grid grid-cols-12 gap-8">
+<!-- YAML Editor Panel -->
+<div class="col-span-12 lg:col-span-5 flex flex-col">
+<div class="bg-surface-container-low rounded-lg overflow-hidden border border-outline-variant/10 shadow-2xl flex flex-col h-[700px]">
+<div class="px-6 py-4 bg-surface-container flex items-center justify-between">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-sm">code</span>
+<span class="text-xs font-bold uppercase tracking-widest text-on-surface-variant">topic_definitions.yaml</span>
+</div>
+<div class="flex gap-2">
+<button class="px-3 py-1 text-xs bg-surface-container-high text-on-surface rounded hover:bg-surface-bright transition-colors">Validate</button>
+<button class="px-3 py-1 text-xs bg-primary-container text-white rounded hover:opacity-90 transition-opacity">Deploy</button>
+</div>
+</div>
+<div class="flex-1 flex bg-surface-container-lowest font-mono text-sm p-4 overflow-hidden">
+<div class="yaml-line-numbers pr-4 text-outline-variant flex flex-col text-right select-none">
+<span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>13</span><span>14</span><span>15</span><span>16</span><span>17</span>
+</div>
+<div class="pl-4 text-on-surface flex-1 overflow-y-auto whitespace-pre">
+<span class="text-secondary">version:</span> 2.4.0
+<span class="text-secondary">taxonomy:</span>
+<span class="text-tertiary">geopolitics:</span>
+<span class="text-primary-fixed-dim">scope:</span> global_strategic
+    <span class="text-primary-fixed-dim">entities:</span>
+      - state_actors
+      - non_state_nodes
+    <span class="text-primary-fixed-dim">priority:</span> high
+    <span class="text-primary-fixed-dim">nlp_rules:</span>
+      - sentiment_weighted
+      - entity_extraction_v3
+  
+  <span class="text-tertiary">infrastructure:</span>
+<span class="text-primary-fixed-dim">scope:</span> critical_national
+    <span class="text-primary-fixed-dim">nodes:</span>
+      - power_grid
+      - telecom_backbone
+      - maritime_logistics</div>
+</div>
+</div>
+</div>
+<!-- Taxonomy Visualizer & Status Center -->
+<div class="col-span-12 lg:col-span-7 space-y-8">
+<!-- Taxonomy Tree Visualizer -->
+<div class="bg-surface-container-low p-8 rounded-lg border border-outline-variant/10 shadow-xl min-h-[400px]">
+<div class="flex justify-between items-start mb-8">
+<div>
+<h3 class="text-xl font-bold text-white mb-1">Taxonomy Visualizer</h3>
+<p class="text-sm text-on-surface-variant">Hierarchical mapping of NLP classification nodes.</p>
+</div>
+<span class="material-symbols-outlined text-on-surface-variant cursor-pointer">fullscreen</span>
+</div>
+<div class="relative space-y-6 pl-6">
+<!-- Root -->
+<div class="relative">
+<div class="flex items-center gap-3 bg-surface-container-high w-fit px-4 py-2 rounded-full border border-outline-variant/20">
+<span class="material-symbols-outlined text-primary text-sm">hub</span>
+<span class="font-bold text-white">Sovereign_Root</span>
+</div>
+<!-- Branches -->
+<div class="taxonomy-branch ml-6 mt-4 pl-6 relative space-y-6">
+<!-- Node 1 -->
+<div class="taxonomy-node relative">
+<div class="flex items-center gap-3 bg-surface-container px-4 py-2 rounded-full border border-outline-variant/20 hover:border-secondary transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-secondary text-sm">public</span>
+<span class="text-on-surface">Geopolitics</span>
+<span class="ml-auto text-[10px] bg-secondary/10 text-secondary px-2 py-0.5 rounded-full border border-secondary/20">24 Entities</span>
+</div>
+</div>
+<!-- Node 2 -->
+<div class="taxonomy-node relative">
+<div class="flex items-center gap-3 bg-surface-container px-4 py-2 rounded-full border border-outline-variant/20 hover:border-secondary transition-colors cursor-pointer group">
+<span class="material-symbols-outlined text-secondary text-sm">settings_input_component</span>
+<span class="text-on-surface">Infrastructure</span>
+<span class="ml-auto text-[10px] bg-secondary/10 text-secondary px-2 py-0.5 rounded-full border border-secondary/20">12 Nodes</span>
+</div>
+<div class="taxonomy-branch ml-6 mt-4 pl-6 relative space-y-4">
+<div class="taxonomy-node relative">
+<div class="text-sm text-on-surface-variant flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
+                                Power Grid
+                            </div>
+</div>
+<div class="taxonomy-node relative">
+<div class="text-sm text-on-surface-variant flex items-center gap-2">
+<span class="w-1.5 h-1.5 rounded-full bg-outline-variant"></span>
+                                Telecom Backbone
+                            </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Ingestion Hub Status Monitors -->
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+<!-- Hub Card 1 -->
+<div class="bg-surface-container-high p-6 rounded-lg border border-outline-variant/10 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<div class="w-10 h-10 rounded-xl bg-secondary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary">cloud_download</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+<span class="text-[10px] font-bold uppercase text-secondary">Synchronized</span>
+</div>
+</div>
+<div>
+<div class="text-white font-bold">Signal_Stream_Alpha</div>
+<div class="text-xs text-on-surface-variant">Encrypted Multi-Source Feed</div>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 mt-2">
+<div class="bg-secondary h-1.5 rounded-full" style="width: 78%"></div>
+</div>
+<div class="flex justify-between text-[10px] font-mono text-on-surface-variant">
+<span>VOL: 1.2TB/s</span>
+<span>LAT: 12ms</span>
+</div>
+</div>
+<!-- Hub Card 2 -->
+<div class="bg-surface-container-high p-6 rounded-lg border border-outline-variant/10 flex flex-col gap-4">
+<div class="flex justify-between items-center">
+<div class="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+<span class="material-symbols-outlined text-primary">psychology</span>
+</div>
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-[10px] font-bold uppercase text-primary">Inference Ready</span>
+</div>
+</div>
+<div>
+<div class="text-white font-bold">Semantic_Parser_V4</div>
+<div class="text-xs text-on-surface-variant">Taxonomy Matching Engine</div>
+</div>
+<div class="w-full bg-surface-container rounded-full h-1.5 mt-2 overflow-hidden">
+<div class="bg-primary h-1.5 rounded-full" style="width: 92%"></div>
+</div>
+<div class="flex justify-between text-[10px] font-mono text-on-surface-variant">
+<span>LOAD: 64%</span>
+<span>ACC: 99.4%</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Contextual Tooltip - floating status -->
+<div class="fixed bottom-8 right-8 z-50">
+<div class="bg-[#191931] border border-outline-variant/20 px-6 py-4 rounded-full shadow-2xl flex items-center gap-4 backdrop-blur-xl">
+<div class="flex -space-x-2">
+<div class="w-8 h-8 rounded-full border-2 border-[#191931] overflow-hidden bg-surface-container">
+<img alt="System Node" data-alt="minimalist 3d abstract digital orb with glowing neon purple core and smooth metallic surface textures" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBzFOz7TL2mJFfoUFhmIXm_5gLXwN-9e5bQaSGqTsI5XmSARQALFhHnkXxzb0jsN9FV6ZDCvOscL7rNL6GY25VramZPtDvANI7sGbe6MmscnxWlDic_y1wMIiPUXlU6xOJ6jvS6uZUbb2VOFxjExhGHAnNtTOx0hfC8848YlzcfBBVSu2du2v7ev431MADeUjs0Te0kDEg6fz_6oiwfX80JAfN_qeddU8RRxWnt7q5hHLRfEzyLuVz7FGM2jTpwEJpmq4L5PISnO8WH"/>
+</div>
+<div class="w-8 h-8 rounded-full border-2 border-[#191931] overflow-hidden bg-surface-container">
+<img alt="System Node" data-alt="minimalist 3d abstract digital orb with glowing teal core and geometric glass fragments floating around it" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDAt4ZgJHFlboYPbsYFKO-843zmHvEtVfWa0iOCF5VPNTJMqt_g2iDTq5jEaMbGbHQ4075WFinbdygM7BNr_wCBjcbT-G39_83no6pyaF2t84TDHDwOxAve44P84OgQoax2wNWLSSqLVq7xkXrjkNz2a4aFb6Oahsvh5oAViKMrdGE8d1-n-f5PK0Qxz3_uhEtYVQK3asf0buafu0sULZ9rtp8oKtlO8Uwl5svUIKdl_0FNTPfpcXXpyuxfD12wpXANkqMlEymVblqy"/>
+</div>
+</div>
+<div class="h-8 w-px bg-outline-variant/30"></div>
+<div>
+<p class="text-xs font-bold text-white">2 Distributed Nodes</p>
+<p class="text-[10px] text-on-surface-variant uppercase tracking-wider">Syncing Ontology...</p>
+</div>
+</div>
+</div>
+</body></html>

@@ -168,3 +168,58 @@ class ExportSnapshot(BaseModel):
     sentiment: SentimentResponse
     topics: TopicsResponse
     posts: PostsResponse  # up to 50 posts
+
+
+class KeyMetrics(BaseModel):
+    """Key metrics for daily briefing."""
+
+    total_posts: int
+    change_from_previous: dict  # {"absolute": int, "percentage": float | None}
+    change_from_weekly_avg: dict
+    sentiment: dict[str, int]  # {"positive": int, "neutral": int, "negative": int}
+
+
+class AnomalyItem(BaseModel):
+    """Detected anomaly in daily briefing."""
+
+    type: str  # "volume_spike", "volume_drop", "negative_sentiment_spike"
+    severity: str  # "high", "medium", "low"
+    topic: str
+    topic_label: str
+    description: str
+    metric: str
+    value: float
+    expected_min: float
+    expected_max: float
+
+
+class TrendingTopicItem(BaseModel):
+    """Trending topic in daily briefing."""
+
+    topic: str
+    topic_label: str
+    direction: str  # "up" or "down"
+    change_pct: float
+    current_volume: int
+
+
+class SentimentShift(BaseModel):
+    """Sentiment shift information."""
+
+    direction: str  # "positive" or "negative"
+    magnitude: float
+    current_net: float
+    previous_net: float
+    comparison: str  # "previous_day" or "weekly_average"
+
+
+class DailyBriefingResponse(BaseModel):
+    """Response for daily briefing endpoint."""
+
+    date: str  # ISO date string "YYYY-MM-DD"
+    summary: str
+    key_metrics: KeyMetrics
+    anomalies: list[AnomalyItem]
+    trending_topics: list[TrendingTopicItem]
+    sentiment_shift: SentimentShift | None
+    recommended_actions: list[str]

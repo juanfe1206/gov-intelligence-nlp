@@ -17,7 +17,9 @@ from app.analytics.schemas import (
     PostsResponse,
     ComparisonResponse,
     SpikesResponse,
+    DailyBriefingResponse,
 )
+from app.analytics.briefing import generate_daily_briefing
 from app.analytics import service as analytics_service
 from app.models.raw_post import RawPost
 
@@ -174,6 +176,47 @@ async def get_spikes(
         sentiment_threshold=sentiment_threshold,
         platform=platform,
     )
+
+
+@router.get("/briefing", response_model=DailyBriefingResponse)
+async def get_daily_briefing(
+    request: Request,
+    briefing_date: date | None = Query(default=None, description="Date for briefing (YYYY-MM-DD), defaults to yesterday"),
+    session: AsyncSession = Depends(get_db),
+) -> DailyBriefingResponse:
+    """Generate a daily briefing with anomaly detection and key insights.
+
+    Returns a summary of the day's political discourse including:
+    - Key metrics and trends
+    - Detected anomalies (volume spikes, sentiment shifts)
+    - Trending topics
+    - Recommended actions
+    """
+    from datetime import timedelta
+    from app.analytics.schemas import KeyMetrics, SentimentShift
+
+    target_date = briefing_date or (date.today() - timedelta(days=1))
+    taxonomy = request.app.state.taxonomy_config
+    briefing = await generate_daily_briefing(session, taxonomy, briefing_date)
+
+    if not briefing:
+        # Return empty briefing instead of error
+        return DailyBriefingResponse(
+            date=target_date.isoformat(),
+            summary="No data available for this date. Try selecting a different date.",
+            key_metrics=KeyMetrics(
+                total_posts=0,
+                change_from_previous={"absolute": 0, "percentage": None},
+                change_from_weekly_avg={"absolute": 0, "percentage": None},
+                sentiment={"positive": 0, "neutral": 0, "negative": 0},
+            ),
+            anomalies=[],
+            trending_topics=[],
+            sentiment_shift=None,
+            recommended_actions=["No data available for analysis."],
+        )
+
+    return DailyBriefingResponse(**briefing.to_dict())
 
 
 @router.get("/export")

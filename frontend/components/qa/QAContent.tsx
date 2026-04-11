@@ -40,9 +40,9 @@ interface QAMetrics {
 
 interface NarrativeCluster {
   label: string
-  sentiment: string               // "positive" | "neutral" | "negative"
+  sentiment: string
   post_count: number
-  representative_posts: QAPostItem[]   // up to 2 items
+  representative_posts: QAPostItem[]
 }
 
 interface QAResponse {
@@ -60,10 +60,52 @@ interface QAResponse {
   insufficient_data: boolean
   summary: string | null
   answer_error: string | null
-  clusters: NarrativeCluster[]    // 2-4 items, or empty when insufficient_data
+  clusters: NarrativeCluster[]
+  structured_insight: StructuredInsight | null
 }
 
-// Taxonomy types for filter panel
+interface StatItem {
+  label: string
+  value: string | number
+  trend?: 'up' | 'down' | 'neutral'
+  trend_value?: string
+  context?: string
+}
+
+interface TrendItem {
+  label: string
+  direction: 'rising' | 'falling' | 'stable'
+  magnitude: 'high' | 'medium' | 'low'
+  volume_change?: string
+}
+
+interface KeyTakeaway {
+  type: 'positive' | 'negative' | 'neutral' | 'warning' | 'opportunity'
+  text: string
+}
+
+interface RecommendedAction {
+  priority: 'high' | 'medium' | 'low'
+  text: string
+  rationale?: string
+}
+
+interface SentimentSummary {
+  positive: string
+  neutral: string
+  negative: string
+  interpretation?: string
+}
+
+interface StructuredInsight {
+  headline: string
+  key_stats: StatItem[]
+  sentiment_summary: SentimentSummary | null
+  trends: TrendItem[]
+  key_takeaways: KeyTakeaway[]
+  recommended_actions: RecommendedAction[]
+}
+
 interface Topic {
   name: string
   label: string
@@ -78,14 +120,13 @@ interface Taxonomy {
   }
 }
 
-// Q&A filter state (simpler than FilterBar's FilterState)
 interface QAFilterState {
-  topic: string       // '' = no filter
-  subtopic: string    // '' = no filter; only meaningful when topic is set
-  party: string       // '' = no filter; maps to backend QAFilters.party
-  platform: string    // '' = no filter
-  startDate: string   // "YYYY-MM-DD" or '' = no filter
-  endDate: string     // "YYYY-MM-DD" or '' = no filter
+  topic: string
+  subtopic: string
+  party: string
+  platform: string
+  startDate: string
+  endDate: string
 }
 
 const DEFAULT_FILTERS: QAFilterState = {
@@ -99,14 +140,14 @@ const QA_TIME_PRESETS = [
   { label: 'Last 30 days', days: 30 },
 ]
 
-function sentimentStyles(sentiment: string) {
+function sentimentStyles(sentiment: string): { chip: string; icon: string } {
   switch (sentiment) {
     case 'positive':
-      return 'text-sentiment-positive bg-sentiment-positive/10'
+      return { chip: 'text-secondary bg-secondary/10 border-secondary/20', icon: 'sentiment_satisfied' }
     case 'negative':
-      return 'text-sentiment-negative bg-sentiment-negative/10'
+      return { chip: 'text-error bg-error/10 border-error/20', icon: 'sentiment_dissatisfied' }
     default:
-      return 'text-muted bg-muted/10'
+      return { chip: 'text-tertiary bg-tertiary/10 border-tertiary/20', icon: 'sentiment_neutral' }
   }
 }
 
@@ -140,7 +181,6 @@ function buildEmptyStateMessage(filters: QAResponse['filters_applied'] | undefin
     ? `No posts found ${parts.slice(0, -1).join(', ')}${parts.length > 1 ? ' and ' : ''}${parts[parts.length - 1]}.`
     : 'No posts found for this question.'
 
-  // Suggest relaxing the most specific active filter first
   let suggestion = 'Try broadening your question.'
   if (filters.subtopic) {
     suggestion = 'Try removing the subtopic filter.'
@@ -158,20 +198,21 @@ function buildEmptyStateMessage(filters: QAResponse['filters_applied'] | undefin
 }
 
 function EvidencePostCard({ post }: { post: QAPostItem }) {
+  const { chip, icon } = sentimentStyles(post.sentiment)
+
   return (
-    <div className="rounded border border-border bg-surface p-4 flex flex-col gap-2">
+    <div className="rounded-lg border border-outline-variant/10 bg-surface-container p-5 flex flex-col gap-3 hover:border-outline-variant/30 transition-colors">
       <div className="flex items-start justify-between gap-2">
-        <span
-          className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${sentimentStyles(post.sentiment)}`}
-        >
+        <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border ${chip}`}>
+          <span className="material-symbols-outlined text-xs">{icon}</span>
           {post.sentiment}
-        </span>
-        <span className="text-muted [font-size:var(--font-size-small)]">{post.platform}</span>
+        </div>
+        <span className="text-on-surface-variant text-sm">{post.platform}</span>
       </div>
-      <p className="text-foreground [font-size:var(--font-size-body)] [line-height:var(--line-height-body)] line-clamp-3">
+      <p className="text-white text-sm leading-relaxed line-clamp-3">
         {post.original_text}
       </p>
-      <div className="flex items-center justify-between text-muted [font-size:var(--font-size-small)]">
+      <div className="flex items-center justify-between text-on-surface-variant text-xs">
         <span>
           {post.topic_label}
           {post.subtopic_label && ` › ${post.subtopic_label}`}
@@ -189,60 +230,288 @@ function MetricsStrip({ metrics }: { metrics: QAMetrics }) {
   const neg = metrics.negative_count
 
   return (
-    <div className="flex flex-wrap items-center gap-4 [font-size:var(--font-size-body)]">
-      <div className="flex items-center gap-1.5">
-        <span className="font-semibold text-foreground">{total.toLocaleString()}</span>
-        <span className="text-muted">posts</span>
+    <div className="flex flex-wrap items-center gap-6 text-sm">
+      <div className="flex items-center gap-2">
+        <span className="font-bold text-white text-lg">{total.toLocaleString()}</span>
+        <span className="text-on-surface-variant">posts</span>
       </div>
-      <div className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-sentiment-positive" />
-        <span className="text-sentiment-positive">{pos}</span>
-        <span className="text-muted">positive</span>
+      <div className="flex items-center gap-2">
+        <span className="w-2.5 h-2.5 rounded-full bg-secondary" />
+        <span className="text-secondary font-medium">{pos}</span>
+        <span className="text-on-surface-variant">positive</span>
       </div>
-      <div className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-muted" />
-        <span className="text-muted">{neu}</span>
-        <span className="text-muted">neutral</span>
+      <div className="flex items-center gap-2">
+        <span className="w-2.5 h-2.5 rounded-full bg-tertiary" />
+        <span className="text-tertiary font-medium">{neu}</span>
+        <span className="text-on-surface-variant">neutral</span>
       </div>
-      <div className="flex items-center gap-1.5">
-        <span className="w-2 h-2 rounded-full bg-sentiment-negative" />
-        <span className="text-sentiment-negative">{neg}</span>
-        <span className="text-muted">negative</span>
+      <div className="flex items-center gap-2">
+        <span className="w-2.5 h-2.5 rounded-full bg-error" />
+        <span className="text-error font-medium">{neg}</span>
+        <span className="text-on-surface-variant">negative</span>
       </div>
     </div>
   )
 }
 
 function NarrativeClusterCard({ cluster }: { cluster: NarrativeCluster }) {
+  const { chip, icon } = sentimentStyles(cluster.sentiment)
+
   return (
-    <div className="rounded border border-border bg-surface p-4 flex flex-col gap-3">
-      {/* Header: label + sentiment tag + post count */}
+    <div className="rounded-lg border border-outline-variant/10 bg-surface-container p-5 flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <span className="font-medium text-foreground [font-size:var(--font-size-body)]">
+        <span className="font-bold text-white">
           {cluster.label}
         </span>
         <div className="flex items-center gap-2">
-          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${sentimentStyles(cluster.sentiment)}`}>
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold border ${chip}`}>
+            <span className="material-symbols-outlined text-xs">{icon}</span>
             {cluster.sentiment}
-          </span>
-          <span className="text-muted [font-size:var(--font-size-small)]">
+          </div>
+          <span className="text-on-surface-variant text-sm">
             {cluster.post_count.toLocaleString()} posts
           </span>
         </div>
       </div>
-      {/* Representative quotes */}
       {cluster.representative_posts.length > 0 && (
         <div className="flex flex-col gap-2">
           {cluster.representative_posts.map((post) => (
             <blockquote
               key={post.id}
-              className="border-l-2 border-border pl-3 text-muted [font-size:var(--font-size-small)] [line-height:var(--line-height-body)] line-clamp-2"
+              className="border-l-2 border-primary/50 pl-3 text-on-surface-variant text-sm line-clamp-2 italic"
             >
-              {post.original_text}
+              "{post.original_text}"
             </blockquote>
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// Structured Insight Visualization Components
+
+function HeadlineCard({ headline }: { headline: string }) {
+  return (
+    <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-5">
+      <div className="flex items-start gap-3">
+        <span className="material-symbols-outlined text-primary text-2xl">auto_awesome</span>
+        <div>
+          <p className="text-lg font-bold text-white leading-tight">{headline}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function StatsGrid({ stats }: { stats: StatItem[] }) {
+  const getTrendIcon = (trend?: string) => {
+    switch (trend) {
+      case 'up': return 'trending_up'
+      case 'down': return 'trending_down'
+      case 'neutral': return 'trending_flat'
+      default: return null
+    }
+  }
+
+  const getTrendColor = (trend?: string) => {
+    switch (trend) {
+      case 'up': return 'text-secondary'
+      case 'down': return 'text-error'
+      case 'neutral': return 'text-tertiary'
+      default: return 'text-on-surface-variant'
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      {stats.slice(0, 4).map((stat, i) => (
+        <div key={i} className="bg-surface-container rounded-lg border border-outline-variant/10 p-4">
+          <div className="text-xs text-on-surface-variant mb-1">{stat.label}</div>
+          <div className="flex items-baseline gap-2">
+            <span className="text-xl font-bold text-white">{stat.value}</span>
+            {stat.trend && getTrendIcon(stat.trend) && (
+              <span className={`material-symbols-outlined text-sm ${getTrendColor(stat.trend)}`}>
+                {getTrendIcon(stat.trend)}
+              </span>
+            )}
+          </div>
+          {stat.trend_value && (
+            <div className={`text-xs ${getTrendColor(stat.trend)}`}>{stat.trend_value}</div>
+          )}
+          {stat.context && (
+            <div className="text-xs text-on-surface-variant mt-1">{stat.context}</div>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function SentimentMiniChart({ summary }: { summary: SentimentSummary | null }) {
+  if (!summary) return null
+
+  const pos = parseInt(summary.positive) || 0
+  const neu = parseInt(summary.neutral) || 0
+  const neg = parseInt(summary.negative) || 0
+
+  return (
+    <div className="bg-surface-container rounded-lg border border-outline-variant/10 p-4">
+      <div className="text-xs text-on-surface-variant mb-3">Sentiment Breakdown</div>
+      <div className="flex items-center gap-2 mb-3">
+        {/* Horizontal stacked bar */}
+        <div className="flex-1 h-3 rounded-full overflow-hidden flex">
+          {pos > 0 && (
+            <div style={{ width: `${pos}%` }} className="bg-secondary h-full" />
+          )}
+          {neu > 0 && (
+            <div style={{ width: `${neu}%` }} className="bg-tertiary h-full" />
+          )}
+          {neg > 0 && (
+            <div style={{ width: `${neg}%` }} className="bg-error h-full" />
+          )}
+        </div>
+      </div>
+      <div className="flex gap-4 text-xs">
+        <div className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-secondary" />
+          <span className="text-secondary font-medium">{summary.positive}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-tertiary" />
+          <span className="text-tertiary font-medium">{summary.neutral}</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-error" />
+          <span className="text-error font-medium">{summary.negative}</span>
+        </div>
+      </div>
+      {summary.interpretation && (
+        <div className="text-xs text-on-surface-variant mt-2">{summary.interpretation}</div>
+      )}
+    </div>
+  )
+}
+
+function TrendingList({ trends }: { trends: TrendItem[] }) {
+  const getDirectionIcon = (direction: string) => {
+    switch (direction) {
+      case 'rising': return 'trending_up'
+      case 'falling': return 'trending_down'
+      default: return 'trending_flat'
+    }
+  }
+
+  const getDirectionColor = (direction: string) => {
+    switch (direction) {
+      case 'rising': return 'text-secondary'
+      case 'falling': return 'text-error'
+      default: return 'text-tertiary'
+    }
+  }
+
+  const getMagnitudeBadge = (magnitude: string) => {
+    switch (magnitude) {
+      case 'high': return 'bg-secondary/20 text-secondary'
+      case 'medium': return 'bg-tertiary/20 text-tertiary'
+      default: return 'bg-surface-container-high text-on-surface-variant'
+    }
+  }
+
+  if (!trends.length) return null
+
+  return (
+    <div className="bg-surface-container rounded-lg border border-outline-variant/10 p-4">
+      <div className="text-xs text-on-surface-variant mb-3">Trending Topics</div>
+      <div className="flex flex-wrap gap-2">
+        {trends.map((trend, i) => (
+          <div key={i} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-surface border border-outline-variant/10">
+            <span className={`material-symbols-outlined text-sm ${getDirectionColor(trend.direction)}`}>
+              {getDirectionIcon(trend.direction)}
+            </span>
+            <span className="text-sm text-white">{trend.label}</span>
+            <span className={`text-xs px-1.5 py-0.5 rounded ${getMagnitudeBadge(trend.magnitude)}`}>
+              {trend.magnitude}
+            </span>
+            {trend.volume_change && (
+              <span className="text-xs text-secondary">{trend.volume_change}</span>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function KeyTakeawaysList({ takeaways }: { takeaways: KeyTakeaway[] }) {
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case 'positive': return 'check_circle'
+      case 'negative': return 'error'
+      case 'warning': return 'warning'
+      case 'opportunity': return 'lightbulb'
+      default: return 'info'
+    }
+  }
+
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'positive': return 'text-secondary'
+      case 'negative': return 'text-error'
+      case 'warning': return 'text-tertiary'
+      case 'opportunity': return 'text-primary'
+      default: return 'text-on-surface-variant'
+    }
+  }
+
+  if (!takeaways.length) return null
+
+  return (
+    <div className="bg-surface-container rounded-lg border border-outline-variant/10 p-4">
+      <div className="text-xs text-on-surface-variant mb-3">Key Takeaways</div>
+      <div className="space-y-2">
+        {takeaways.slice(0, 3).map((takeaway, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className={`material-symbols-outlined text-sm ${getTypeColor(takeaway.type)} mt-0.5`}>
+              {getTypeIcon(takeaway.type)}
+            </span>
+            <p className="text-sm text-white">{takeaway.text}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function RecommendedActionsList({ actions }: { actions: RecommendedAction[] }) {
+  const getPriorityBadge = (priority: string) => {
+    switch (priority) {
+      case 'high': return 'bg-error/20 text-error border-error/30'
+      case 'medium': return 'bg-tertiary/20 text-tertiary border-tertiary/30'
+      default: return 'bg-surface-container-high text-on-surface-variant border-outline-variant/30'
+    }
+  }
+
+  if (!actions.length) return null
+
+  return (
+    <div className="bg-surface-container rounded-lg border border-outline-variant/10 p-4">
+      <div className="text-xs text-on-surface-variant mb-3">Recommended Actions</div>
+      <div className="space-y-2">
+        {actions.slice(0, 2).map((action, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <span className={`text-xs px-2 py-0.5 rounded border ${getPriorityBadge(action.priority)}`}>
+              {action.priority}
+            </span>
+            <div className="flex-1">
+              <p className="text-sm text-white">{action.text}</p>
+              {action.rationale && (
+                <p className="text-xs text-on-surface-variant mt-0.5">{action.rationale}</p>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
@@ -254,7 +523,6 @@ export default function QAContent() {
   const [error, setError] = useState<string | null>(null)
   const abortControllerRef = useRef<AbortController | null>(null)
 
-  // Filter panel state
   const [filterOpen, setFilterOpen] = useState(false)
   const [qaFilters, setQAFilters] = useState<QAFilterState>(DEFAULT_FILTERS)
   const [taxonomy, setTaxonomy] = useState<Taxonomy | null>(null)
@@ -262,7 +530,6 @@ export default function QAContent() {
 
   const searchParams = useSearchParams()
 
-  // Compute if any filter is active
   const hasActiveFilters =
     qaFilters.topic !== '' ||
     qaFilters.subtopic !== '' ||
@@ -271,7 +538,6 @@ export default function QAContent() {
     qaFilters.startDate !== '' ||
     qaFilters.endDate !== ''
 
-  // Fetch taxonomy and platforms on mount
   useEffect(() => {
     Promise.all([
       fetch(`${API_BASE}/taxonomy`).then((r) => r.json()),
@@ -281,23 +547,19 @@ export default function QAContent() {
         setTaxonomy(tax)
         setPlatforms(plat.platforms ?? [])
       })
-      .catch(() => {
-        // Silently fail — filter options will be empty
-      })
+      .catch(() => {})
   }, [])
 
-  // Apply URL params on mount and when they change (from SpikeAlertBanner or TopicsPanel navigation)
   useEffect(() => {
     const questionParam = searchParams.get('question')
     const topicParam = searchParams.get('topic')
     if (questionParam) setQuestion(questionParam)
     if (topicParam) {
       setQAFilters((f) => ({ ...f, topic: topicParam }))
-      setFilterOpen(true)   // open filter panel so user sees the pre-set topic
+      setFilterOpen(true)
     }
   }, [searchParams])
 
-  // Cleanup: abort any in-flight request on unmount
   useEffect(() => {
     return () => {
       if (abortControllerRef.current) {
@@ -313,7 +575,6 @@ export default function QAContent() {
   const handleSubmit = useCallback(async () => {
     if (!question.trim()) return
 
-    // Cancel any in-flight request
     if (abortControllerRef.current) {
       abortControllerRef.current.abort()
     }
@@ -324,7 +585,6 @@ export default function QAContent() {
     setError(null)
     setResult(null)
 
-    // Build filters object only when any filter is active
     const activeFilters = hasActiveFilters ? {
       topic: qaFilters.topic || undefined,
       subtopic: qaFilters.subtopic || undefined,
@@ -360,7 +620,6 @@ export default function QAContent() {
       if ((err as Error).name === 'AbortError') return
       setError('Unable to reach the server. Check that the backend is running.')
     } finally {
-      // Only clear loading if this is still the active request
       if (abortControllerRef.current === controller) {
         setLoading(false)
       }
@@ -374,14 +633,13 @@ export default function QAContent() {
     }
   }, [handleSubmit])
 
-  // Determine what to render in the answer area
   const renderAnswerArea = () => {
     if (loading) {
       return (
-        <div className="col-span-12 flex items-center justify-center py-12">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <p className="text-muted [font-size:var(--font-size-body)]">Analyzing discourse…</p>
+        <div className="flex items-center justify-center py-12">
+          <div className="flex flex-col items-center gap-4">
+            <span className="material-symbols-outlined text-4xl text-primary animate-spin">progress_activity</span>
+            <p className="text-on-surface-variant">Analyzing discourse...</p>
           </div>
         </div>
       )
@@ -389,17 +647,19 @@ export default function QAContent() {
 
     if (error) {
       return (
-        <div className="col-span-12 flex flex-col gap-3">
-          <p className="text-sentiment-negative [font-size:var(--font-size-body)]">
-            Something went wrong — please try again.
-          </p>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2 text-error">
+            <span className="material-symbols-outlined">error</span>
+            <p>Something went wrong — please try again.</p>
+          </div>
           <button
             type="button"
             onClick={handleSubmit}
             disabled={loading}
             aria-label="Retry the question"
-            className="self-start px-3 py-1.5 rounded border border-border bg-surface text-foreground hover:bg-surface-raised [font-size:var(--font-size-small)] disabled:opacity-50"
+            className="self-start px-4 py-2 rounded-full border border-outline-variant/20 bg-surface-container text-white hover:bg-surface-container-high text-sm font-medium disabled:opacity-50 flex items-center gap-2"
           >
+            <span className="material-symbols-outlined text-sm">refresh</span>
             Retry
           </button>
         </div>
@@ -413,47 +673,77 @@ export default function QAContent() {
     if (result.insufficient_data) {
       const { reason, suggestion } = buildEmptyStateMessage(result.filters_applied)
       return (
-        <div className="col-span-12 flex flex-col gap-2">
-          <p className="text-muted [font-size:var(--font-size-body)]">{reason}</p>
-          <p className="text-muted [font-size:var(--font-size-small)]">{suggestion}</p>
+        <div className="flex flex-col gap-3 bg-surface-container-low/50 rounded-lg border border-outline-variant/10 p-6 text-center">
+          <span className="material-symbols-outlined text-4xl text-on-surface-variant/50">search_off</span>
+          <p className="text-on-surface-variant">{reason}</p>
+          <p className="text-on-surface-variant text-sm">{suggestion}</p>
         </div>
       )
     }
 
-    // Render the Insight Summary Panel
     return (
-      <div className="col-span-12 flex flex-col gap-6">
-        {/* Warning Banner (if answer_error present) */}
+      <div className="space-y-8">
         {result.answer_error && (
-          <div className="rounded border border-sentiment-warning/30 bg-sentiment-warning/10 p-4">
-            <p className="text-sentiment-warning [font-size:var(--font-size-body)]">
-              {result.answer_error}
-            </p>
+          <div className="rounded-lg border border-tertiary/30 bg-tertiary/10 p-4 flex items-center gap-2">
+            <span className="material-symbols-outlined text-tertiary">warning</span>
+            <p className="text-tertiary">{result.answer_error}</p>
           </div>
         )}
 
-        {/* Summary Section */}
-        {result.summary && (
-          <div className="flex flex-col gap-2">
-            <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">Summary</h3>
-            <p className="text-foreground [font-size:var(--font-size-body)] [line-height:var(--line-height-body)]">
-              {result.summary}
-            </p>
+        {/* Structured Insight Visualization */}
+        {result.structured_insight && (
+          <div className="space-y-4">
+            {/* Headline */}
+            <HeadlineCard headline={result.structured_insight.headline} />
+
+            {/* Key Stats Grid */}
+            {result.structured_insight.key_stats.length > 0 && (
+              <StatsGrid stats={result.structured_insight.key_stats} />
+            )}
+
+            {/* Visual Data Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <SentimentMiniChart summary={result.structured_insight.sentiment_summary} />
+              <TrendingList trends={result.structured_insight.trends} />
+            </div>
+
+            {/* Takeaways and Actions */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <KeyTakeawaysList takeaways={result.structured_insight.key_takeaways} />
+              <RecommendedActionsList actions={result.structured_insight.recommended_actions} />
+            </div>
           </div>
         )}
 
-        {/* Metrics Strip */}
-        <div className="flex flex-col gap-2">
-          <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">Key Metrics</h3>
-          <MetricsStrip metrics={result.metrics} />
+        {/* Fallback Summary (if no structured insight) */}
+        {result.summary && !result.structured_insight && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">summarize</span>
+              <h3 className="font-bold text-white text-lg">Summary</h3>
+            </div>
+            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-5">
+              <p className="text-white leading-relaxed">{result.summary}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-primary">analytics</span>
+            <h3 className="font-bold text-white text-lg">Key Metrics</h3>
+          </div>
+          <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-5">
+            <MetricsStrip metrics={result.metrics} />
+          </div>
         </div>
 
-        {/* Evidence Posts */}
         {result.retrieved_posts.length > 0 && (
           <div className="flex flex-col gap-3">
-            <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">
-              Evidence Posts
-            </h3>
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">format_quote</span>
+              <h3 className="font-bold text-white text-lg">Evidence Posts</h3>
+            </div>
             <div className="grid grid-cols-1 gap-4">
               {result.retrieved_posts.slice(0, 5).map((post) => (
                 <EvidencePostCard key={post.id} post={post} />
@@ -462,12 +752,12 @@ export default function QAContent() {
           </div>
         )}
 
-        {/* Narrative Clusters — only show when there are at least 2 distinct clusters */}
         {result.clusters.length >= 2 && (
           <div className="flex flex-col gap-3">
-            <h3 className="font-medium text-foreground [font-size:var(--font-size-h4)]">
-              Narrative Clusters
-            </h3>
+            <div className="flex items-center gap-2">
+              <span className="material-symbols-outlined text-primary">hub</span>
+              <h3 className="font-bold text-white text-lg">Narrative Clusters</h3>
+            </div>
             <div className="grid grid-cols-1 gap-4">
               {result.clusters.slice(0, 4).map((cluster, i) => (
                 <NarrativeClusterCard key={`${cluster.label}-${i}`} cluster={cluster} />
@@ -476,7 +766,6 @@ export default function QAContent() {
           </div>
         )}
 
-        {/* Scope Label */}
         {(() => {
           const total = result.metrics.total_retrieved.toLocaleString()
           const sd = result.filters_applied.start_date
@@ -486,7 +775,7 @@ export default function QAContent() {
           else if (sd) label += ` · from ${sd}`
           else if (ed) label += ` · up to ${ed}`
           return (
-            <p className="text-muted [font-size:var(--font-size-small)]">
+            <p className="text-on-surface-variant text-sm text-right">
               {label}
             </p>
           )
@@ -496,54 +785,54 @@ export default function QAContent() {
   }
 
   return (
-    <div className="col-span-12 flex flex-col gap-6">
+    <div className="space-y-8">
       {/* Header */}
-      <div>
-        <h2 className="text-foreground font-semibold [font-size:var(--font-size-h2)] [line-height:var(--line-height-h2)]">
-          Q&A
-        </h2>
-        <p className="mt-2 text-muted [font-size:var(--font-size-body)] [line-height:var(--line-height-body)]">
+      <section className="max-w-3xl">
+        <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">
+          Intelligence Q&A
+        </h1>
+        <p className="text-on-surface-variant text-lg">
           Ask political questions and get AI-powered insights based on social media data.
         </p>
-      </div>
+      </section>
 
       {/* Question Input Section */}
-      <div className="bg-surface-raised rounded-lg border border-border p-4 flex flex-col gap-4">
-        {/* Text Input */}
-        <div className="flex flex-col gap-2">
-          <label htmlFor="question" className="font-medium text-foreground [font-size:var(--font-size-body)]">
+      <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+        <div className="flex flex-col gap-4">
+          <label htmlFor="question" className="font-bold text-white">
             Your Question
           </label>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <input
               id="question"
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask a question about political discourse…"
+              placeholder="Ask a question about political discourse..."
               maxLength={500}
-              className="flex-1 px-4 py-2 rounded border border-border bg-surface text-foreground placeholder:text-muted [font-size:var(--font-size-body)] focus:outline-none focus:ring-2 focus:ring-primary/50"
+              className="flex-1 px-4 py-3 rounded-full bg-surface border border-outline-variant/20 text-white placeholder:text-on-surface-variant focus:outline-none focus:border-primary transition-colors"
             />
             <button
               onClick={handleSubmit}
               disabled={loading || !question.trim()}
-              className="px-6 py-2 rounded bg-primary text-white font-medium [font-size:var(--font-size-body)] hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-3 rounded-full bg-primary-container text-white font-bold hover:bg-primary-container/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
             >
-              {loading ? 'Analyzing…' : 'Ask'}
+              <span className="material-symbols-outlined text-sm">send</span>
+              {loading ? 'Analyzing...' : 'Ask'}
             </button>
           </div>
         </div>
 
         {/* Preset Suggestion Chips */}
-        <div className="flex flex-col gap-2">
-          <span className="text-muted [font-size:var(--font-size-small)]">Suggested questions:</span>
+        <div className="flex flex-col gap-3 mt-6">
+          <span className="text-on-surface-variant text-sm">Suggested questions:</span>
           <div className="flex flex-wrap gap-2">
             {PRESET_QUESTIONS.map((preset) => (
               <button
                 key={preset}
                 onClick={() => handlePresetClick(preset)}
-                className="px-3 py-1.5 rounded-full border border-border bg-surface text-foreground hover:bg-surface-raised [font-size:var(--font-size-small)] transition-colors"
+                className="px-4 py-2 rounded-full border border-outline-variant/20 bg-surface text-sm text-white hover:bg-surface-container-high transition-colors"
               >
                 {preset}
               </button>
@@ -554,16 +843,16 @@ export default function QAContent() {
           <button
             type="button"
             onClick={() => setFilterOpen((o) => !o)}
-            className="self-start text-muted hover:text-foreground [font-size:var(--font-size-small)] flex items-center gap-1 mt-1"
+            className="self-start text-on-surface-variant hover:text-white text-sm flex items-center gap-1 mt-2 transition-colors"
           >
+            <span className="material-symbols-outlined text-sm">tune</span>
             Filters {filterOpen ? '▲' : '▼'}
           </button>
         </div>
 
         {/* Filter Panel */}
         {filterOpen && (
-          <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-border">
-            {/* Topic select */}
+          <div className="flex flex-wrap gap-3 items-center pt-4 mt-4 border-t border-outline-variant/10">
             <select
               value={qaFilters.topic}
               onChange={(e) => {
@@ -571,10 +860,10 @@ export default function QAContent() {
                 setQAFilters((f) => ({
                   ...f,
                   topic,
-                  subtopic: '', // reset subtopic when topic changes
+                  subtopic: '',
                 }))
               }}
-              className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+              className="px-3 py-2 rounded-full text-sm bg-surface border border-outline-variant/20 text-white focus:outline-none focus:border-primary"
             >
               <option value="">All Topics</option>
               {taxonomy?.topics.map((t) => (
@@ -582,12 +871,11 @@ export default function QAContent() {
               ))}
             </select>
 
-            {/* Subtopic select */}
             <select
               value={qaFilters.subtopic}
               onChange={(e) => setQAFilters((f) => ({ ...f, subtopic: e.target.value }))}
               disabled={!qaFilters.topic}
-              className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground disabled:opacity-50"
+              className="px-3 py-2 rounded-full text-sm bg-surface border border-outline-variant/20 text-white focus:outline-none focus:border-primary disabled:opacity-50"
             >
               <option value="">All Subtopics</option>
               {(() => {
@@ -598,11 +886,10 @@ export default function QAContent() {
               })()}
             </select>
 
-            {/* Party/Target select */}
             <select
               value={qaFilters.party}
               onChange={(e) => setQAFilters((f) => ({ ...f, party: e.target.value }))}
-              className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+              className="px-3 py-2 rounded-full text-sm bg-surface border border-outline-variant/20 text-white focus:outline-none focus:border-primary"
             >
               <option value="">All Parties / Leaders</option>
               {(() => {
@@ -615,11 +902,10 @@ export default function QAContent() {
               })()}
             </select>
 
-            {/* Platform select */}
             <select
               value={qaFilters.platform}
               onChange={(e) => setQAFilters((f) => ({ ...f, platform: e.target.value }))}
-              className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+              className="px-3 py-2 rounded-full text-sm bg-surface border border-outline-variant/20 text-white focus:outline-none focus:border-primary"
             >
               <option value="">All Platforms</option>
               {platforms.map((p) => (
@@ -627,9 +913,7 @@ export default function QAContent() {
               ))}
             </select>
 
-            {/* Time range select */}
             {(() => {
-              // Compute selected preset from startDate/endDate
               const selectedPreset = QA_TIME_PRESETS.find(({ days }) => {
                 if (days === 0) return qaFilters.startDate === '' && qaFilters.endDate === ''
                 const { startDate: ps, endDate: pe } = getDefaultDates(days)
@@ -647,7 +931,7 @@ export default function QAContent() {
                       setQAFilters((f) => ({ ...f, startDate, endDate }))
                     }
                   }}
-                  className="border border-border rounded px-2 py-1 [font-size:var(--font-size-small)] bg-surface text-foreground"
+                  className="px-3 py-2 rounded-full text-sm bg-surface border border-outline-variant/20 text-white focus:outline-none focus:border-primary"
                 >
                   {QA_TIME_PRESETS.map(({ label, days }) => (
                     <option key={days} value={days}>{label}</option>
@@ -656,13 +940,13 @@ export default function QAContent() {
               )
             })()}
 
-            {/* Clear filters button */}
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={() => { setQAFilters(DEFAULT_FILTERS) }}
-                className="px-2 py-1 border border-border rounded text-muted hover:text-foreground [font-size:var(--font-size-small)]"
+                className="px-4 py-2 rounded-full text-sm border border-outline-variant/20 text-on-surface-variant hover:text-white hover:bg-surface-container-high transition-colors flex items-center gap-1"
               >
+                <span className="material-symbols-outlined text-sm">close</span>
                 Clear filters
               </button>
             )}
