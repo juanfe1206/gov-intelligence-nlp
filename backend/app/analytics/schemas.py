@@ -1,6 +1,7 @@
 """Pydantic schemas for analytics endpoints."""
 
 from datetime import date
+from typing import Any
 from pydantic import BaseModel
 
 
@@ -16,6 +17,8 @@ class VolumeResponse(BaseModel):
 
     data: list[DailyVolume]
     total: int
+    date_range: dict[str, str] | None = None  # {"requested_start": "...", "requested_end": "...", "actual_start": "...", "actual_end": "..."}
+    data_quality: dict[str, Any] | None = None  # {"has_data": bool, "coverage_percent": float, "days_with_data": int, "total_days": int, "auto_adjusted": bool}
 
 
 class DailySentiment(BaseModel):
@@ -31,6 +34,8 @@ class SentimentResponse(BaseModel):
     """Response for sentiment analytics endpoint."""
 
     data: list[DailySentiment]
+    date_range: dict[str, str] | None = None  # {"requested_start": "...", "requested_end": "...", "actual_start": "...", "actual_end": "..."}
+    data_quality: dict[str, Any] | None = None  # {"has_data": bool, "coverage_percent": float, "days_with_data": int, "total_days": int, "auto_adjusted": bool}
 
 
 class PlatformsResponse(BaseModel):

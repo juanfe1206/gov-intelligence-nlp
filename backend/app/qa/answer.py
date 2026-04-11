@@ -40,8 +40,10 @@ async def generate_answer(
     system_prompt = (
         "You are a political intelligence analyst. "
         "Your task is to synthesize social media data into concise, evidence-based insights. "
-        "Be direct and factual. Provide sufficient detail to answer the question, but avoid unnecessary verbosity. "
-        "Do not speculate beyond the data."
+        "Format your response as 3-4 bullet points maximum. "
+        "Use **bold** for key phrases, numbers, and critical findings. "
+        "Be direct and factual. Do not speculate beyond the data. "
+        "Each bullet should be 1-2 lines maximum."
     )
 
     user_prompt = (
@@ -50,8 +52,12 @@ async def generate_answer(
         f"Sentiment breakdown: {metrics.positive_count} positive, "
         f"{metrics.neutral_count} neutral, {metrics.negative_count} negative.\n\n"
         f"Top evidence posts:\n{post_lines}\n\n"
-        "Write a concise narrative answer that directly addresses the question using the sentiment data "
-        "and evidence above. Be succinct but thorough — use more detail when the evidence warrants it."
+        "Write a structured response following these rules:\n"
+        "- Use bullet points (• or -) for each key finding\n"
+        "- Bold key numbers and critical phrases with **text**\n"
+        "- Maximum 4 bullet points\n"
+        "- Each bullet: 1-2 lines maximum\n"
+        "- Focus on the most important insights only"
     )
 
     try:

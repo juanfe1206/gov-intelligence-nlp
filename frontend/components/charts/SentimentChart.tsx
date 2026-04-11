@@ -136,7 +136,7 @@ export default function SentimentChart({ data }: Props) {
               // Parse ISO date string as local date to avoid UTC timezone issues
               const [year, month, day] = v.split('-').map(Number)
               const date = new Date(year, month - 1, day)
-              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
             }}
             axisLine={false}
             tickLine={false}
@@ -162,7 +162,7 @@ export default function SentimentChart({ data }: Props) {
                 return (
                   <div className="p-2">
                     <p className="text-white font-medium mb-2">
-                      {date.toLocaleDateString('en-US', {
+                      {date.toLocaleDateString('en-GB', {
                         weekday: 'short',
                         month: 'short',
                         day: 'numeric'

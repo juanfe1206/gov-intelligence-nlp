@@ -3,6 +3,7 @@
 import asyncio
 from datetime import date, timedelta
 from collections import defaultdict
+from typing import Any
 
 from sqlalchemy import func, cast, Date, and_, or_, select, desc, case
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,6 +31,180 @@ from app.analytics.schemas import (
 from app.taxonomy.schemas import TaxonomyConfig
 
 
+# Constants for smart date range detection
+MIN_DATA_DAYS = 7  # Minimum days to show when auto-adjusting
+MAX_EMPTY_RATIO = 0.8  # If more than 80% of days are empty, auto-adjust
+DEFAULT_LOOKBACK_DAYS = 90  # Default lookback when no data in requested range
+
+
+async def _detect_optimal_date_range(
+    session: AsyncSession,
+    requested_start: date,
+    requested_end: date,
+    topic: str | None = None,
+    subtopic: str | None = None,
+    target: str | None = None,
+    platform: str | None = None,
+) -> tuple[date, date, dict[str, Any]]:
+    """Detect the optimal date range with actual data.
+
+    Returns:
+        (actual_start, actual_end, data_quality_metadata)
+    """
+    date_col = cast(RawPost.created_at, Date)
+
+    # Build filters (same as main queries)
+    filters = [
+        date_col >= requested_start,
+        date_col <= requested_end,
+        or_(
+            ProcessedPost.error_status.is_(False),
+            ProcessedPost.error_status.is_(None),
+        ),
+    ]
+    if topic is not None:
+        filters.append(ProcessedPost.topic == topic)
+    if subtopic is not None:
+        filters.append(ProcessedPost.subtopic == subtopic)
+    if target is not None:
+        filters.append(ProcessedPost.target == target)
+    if platform is not None:
+        filters.append(RawPost.platform == platform)
+
+    # Get data distribution in requested range
+    stmt = (
+        select(date_col.label("day"), func.count().label("count"))
+        .select_from(ProcessedPost)
+        .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+        .where(and_(*filters))
+        .group_by(date_col)
+        .order_by(date_col)
+    )
+    result = await session.execute(stmt)
+    rows = result.all()
+
+    if not rows:
+        # No data in requested range - find most recent data
+        return await _find_most_recent_data(
+            session, topic, subtopic, target, platform, requested_start, requested_end
+        )
+
+    # Calculate data quality metrics
+    days_with_data = len([r for r in rows if r.count > 0])
+    total_requested_days = (requested_end - requested_start).days + 1
+    coverage_percent = days_with_data / total_requested_days if total_requested_days > 0 else 0
+
+    # If coverage is too low, try to find better range
+    if coverage_percent < (1 - MAX_EMPTY_RATIO):
+        return await _find_most_recent_data(
+            session, topic, subtopic, target, platform, requested_start, requested_end
+        )
+
+    # Use requested range - has sufficient data
+    data_quality = {
+        "has_data": True,
+        "coverage_percent": round(coverage_percent, 2),
+        "days_with_data": days_with_data,
+        "total_days": total_requested_days,
+        "auto_adjusted": False,
+    }
+    return requested_start, requested_end, data_quality
+
+
+async def _find_most_recent_data(
+    session: AsyncSession,
+    topic: str | None,
+    subtopic: str | None,
+    target: str | None,
+    platform: str | None,
+    requested_start: date,
+    requested_end: date,
+) -> tuple[date, date, dict[str, Any]]:
+    """Find the most recent date range with actual data."""
+    date_col = cast(RawPost.created_at, Date)
+
+    # Build base filters (without date range)
+    base_filters = [
+        or_(
+            ProcessedPost.error_status.is_(False),
+            ProcessedPost.error_status.is_(None),
+        ),
+    ]
+    if topic is not None:
+        base_filters.append(ProcessedPost.topic == topic)
+    if subtopic is not None:
+        base_filters.append(ProcessedPost.subtopic == subtopic)
+    if target is not None:
+        base_filters.append(ProcessedPost.target == target)
+    if platform is not None:
+        base_filters.append(RawPost.platform == platform)
+
+    # Find the latest date with data
+    latest_stmt = (
+        select(date_col)
+        .select_from(ProcessedPost)
+        .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+        .where(and_(*base_filters))
+        .order_by(date_col.desc())
+        .limit(1)
+    )
+    latest_result = await session.execute(latest_stmt)
+    latest_row = latest_result.first()
+
+    if not latest_row:
+        # No data at all for these filters
+        return requested_start, requested_end, {
+            "has_data": False,
+            "coverage_percent": 0.0,
+            "days_with_data": 0,
+            "total_days": (requested_end - requested_start).days + 1,
+            "auto_adjusted": False,
+            "reason": "No data available for the selected filters",
+        }
+
+    latest_date = latest_row[0]
+    if isinstance(latest_date, str):
+        latest_date = date.fromisoformat(latest_date)
+
+    # Calculate optimal range: up to DEFAULT_LOOKBACK_DAYS before latest date
+    actual_end = min(latest_date, requested_end)
+    actual_start = max(actual_end - timedelta(days=DEFAULT_LOOKBACK_DAYS - 1), requested_start)
+
+    # Ensure we get at least MIN_DATA_DAYS with data
+    # Count days with data in this range
+    count_stmt = (
+        select(func.count(func.distinct(date_col)))
+        .select_from(ProcessedPost)
+        .join(RawPost, ProcessedPost.raw_post_id == RawPost.id)
+        .where(and_(
+            *base_filters,
+            date_col >= actual_start,
+            date_col <= actual_end,
+        ))
+    )
+    count_result = await session.execute(count_stmt)
+    days_with_data = count_result.scalar() or 0
+
+    # Get total days in adjusted range
+    total_days = (actual_end - actual_start).days + 1
+    coverage_percent = days_with_data / total_days if total_days > 0 else 0
+
+    data_quality = {
+        "has_data": days_with_data > 0,
+        "coverage_percent": round(coverage_percent, 2),
+        "days_with_data": days_with_data,
+        "total_days": total_days,
+        "auto_adjusted": True,
+        "requested_range": {
+            "start": requested_start.isoformat(),
+            "end": requested_end.isoformat(),
+        },
+        "reason": f"Showing last {total_days} days with activity" if days_with_data > 0 else "No data available",
+    }
+
+    return actual_start, actual_end, data_quality
+
+
 async def get_volume(
     session: AsyncSession,
     start_date: date,
@@ -44,11 +219,18 @@ async def get_volume(
     Joins processed_posts with raw_posts to get the created_at date dimension.
     Filters out posts with error_status=True.
     Optional filters: topic, subtopic, target, platform.
+
+    Uses smart date range detection to auto-adjust when requested range has no data.
     """
+    # Detect optimal date range
+    actual_start, actual_end, data_quality = await _detect_optimal_date_range(
+        session, start_date, end_date, topic, subtopic, target, platform
+    )
+
     date_col = cast(RawPost.created_at, Date)
     filters = [
-        date_col >= start_date,
-        date_col <= end_date,
+        date_col >= actual_start,
+        date_col <= actual_end,
         or_(
             ProcessedPost.error_status.is_(False),
             ProcessedPost.error_status.is_(None),
@@ -75,15 +257,25 @@ async def get_volume(
     rows = result.all()
     row_map = {str(row.day): row.count for row in rows}
 
-    # Fill the entire requested date range with explicit zero buckets.
+    # Fill the date range with explicit zero buckets.
     data: list[DailyVolume] = []
-    current = start_date
-    while current <= end_date:
+    current = actual_start
+    while current <= actual_end:
         day_str = current.isoformat()
         data.append(DailyVolume(date=day_str, count=row_map.get(day_str, 0)))
         current += timedelta(days=1)
 
-    return VolumeResponse(data=data, total=sum(d.count for d in data))
+    return VolumeResponse(
+        data=data,
+        total=sum(d.count for d in data),
+        date_range={
+            "requested_start": start_date.isoformat(),
+            "requested_end": end_date.isoformat(),
+            "actual_start": actual_start.isoformat(),
+            "actual_end": actual_end.isoformat(),
+        },
+        data_quality=data_quality,
+    )
 
 
 async def get_sentiment(
@@ -101,11 +293,18 @@ async def get_sentiment(
     Filters out posts with error_status=True.
     Aggregates counts by date and sentiment (positive/neutral/negative).
     Optional filters: topic, subtopic, target, platform.
+
+    Uses smart date range detection to auto-adjust when requested range has no data.
     """
+    # Detect optimal date range
+    actual_start, actual_end, data_quality = await _detect_optimal_date_range(
+        session, start_date, end_date, topic, subtopic, target, platform
+    )
+
     date_col = cast(RawPost.created_at, Date)
     filters = [
-        date_col >= start_date,
-        date_col <= end_date,
+        date_col >= actual_start,
+        date_col <= actual_end,
         or_(
             ProcessedPost.error_status.is_(False),
             ProcessedPost.error_status.is_(None),
@@ -145,16 +344,25 @@ async def get_sentiment(
         else:
             by_date[day_str]["neutral"] += row.count  # fallback
 
-    # Fill the entire requested date range with explicit zero buckets.
+    # Fill the date range with explicit zero buckets.
     data: list[DailySentiment] = []
-    current = start_date
-    while current <= end_date:
+    current = actual_start
+    while current <= actual_end:
         day_str = current.isoformat()
         counts = by_date.get(day_str, {"positive": 0, "neutral": 0, "negative": 0})
         data.append(DailySentiment(date=day_str, **counts))
         current += timedelta(days=1)
 
-    return SentimentResponse(data=data)
+    return SentimentResponse(
+        data=data,
+        date_range={
+            "requested_start": start_date.isoformat(),
+            "requested_end": end_date.isoformat(),
+            "actual_start": actual_start.isoformat(),
+            "actual_end": actual_end.isoformat(),
+        },
+        data_quality=data_quality,
+    )
 
 
 async def get_topics(

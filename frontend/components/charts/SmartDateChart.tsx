@@ -148,7 +148,7 @@ export default function SmartDateChart({ data, onDateSelect }: Props) {
               <span className="material-symbols-outlined text-xs">sentiment_satisfied</span>
               Best: {(() => {
                 const [y, m, d] = insights.bestDay!.date.split('-').map(Number)
-                return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                return new Date(y, m - 1, d).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
               })()}
             </div>
           )}
@@ -157,7 +157,7 @@ export default function SmartDateChart({ data, onDateSelect }: Props) {
               <span className="material-symbols-outlined text-xs">sentiment_dissatisfied</span>
               Worst: {(() => {
                 const [y, m, d] = insights.worstDay!.date.split('-').map(Number)
-                return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                return new Date(y, m - 1, d).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
               })()}
             </div>
           )}
@@ -175,7 +175,7 @@ export default function SmartDateChart({ data, onDateSelect }: Props) {
               // Parse ISO date string as local date to avoid UTC timezone issues
               const [year, month, day] = v.split('-').map(Number)
               const date = new Date(year, month - 1, day)
-              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
             }}
             axisLine={false}
             tickLine={false}
@@ -204,7 +204,7 @@ export default function SmartDateChart({ data, onDateSelect }: Props) {
                   return (
                     <div className="p-2">
                       <p className="text-white font-medium mb-1">
-                        {date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                        {date.toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}
                       </p>
                       <p className="text-on-surface-variant text-xs">No data for this date</p>
                     </div>
@@ -214,7 +214,7 @@ export default function SmartDateChart({ data, onDateSelect }: Props) {
                 return (
                   <div className="p-2">
                     <p className="text-white font-medium mb-2">
-                      {date.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+                      {date.toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}
                     </p>
                     <p className="text-primary text-lg font-bold">{entry.value.toLocaleString()} posts</p>
                     <div className="flex gap-2 text-xs mt-2">
@@ -282,7 +282,7 @@ export default function SmartDateChart({ data, onDateSelect }: Props) {
                 </span>
                 {(() => {
                   const [y, m, d] = day.date.split('-').map(Number)
-                  return new Date(y, m - 1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                  return new Date(y, m - 1, d).toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
                 })()}
                 : {day.value.toLocaleString()} posts
               </button>

@@ -153,7 +153,7 @@ function sentimentStyles(sentiment: string): { chip: string; icon: string } {
 
 function formatDateString(isoDate: string): string {
   const date = new Date(isoDate + 'T00:00:00')
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+  return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
 function buildEmptyStateMessage(filters: QAResponse['filters_applied'] | undefined): {
@@ -681,90 +681,119 @@ export default function QAContent() {
       )
     }
 
-    return (
-      <div className="space-y-8">
-        {result.answer_error && (
-          <div className="rounded-lg border border-tertiary/30 bg-tertiary/10 p-4 flex items-center gap-2">
-            <span className="material-symbols-outlined text-tertiary">warning</span>
-            <p className="text-tertiary">{result.answer_error}</p>
-          </div>
-        )}
+        // Helper to render markdown bold (**text**) as <strong>
+        const renderWithBold = (text: string) => {
+          const parts = text.split(/(\*\*.*?\*\*)/g)
+          return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+              return <strong key={i} className="text-white font-bold">{part.slice(2, -2)}</strong>
+            }
+            return part
+          })
+        }
 
-        {/* Structured Insight Visualization */}
-        {result.structured_insight && (
-          <div className="space-y-4">
-            {/* Headline */}
-            <HeadlineCard headline={result.structured_insight.headline} />
-
-            {/* Key Stats Grid */}
-            {result.structured_insight.key_stats.length > 0 && (
-              <StatsGrid stats={result.structured_insight.key_stats} />
+        return (
+          <div className="space-y-8">
+            {result.answer_error && (
+              <div className="rounded-lg border border-tertiary/30 bg-tertiary/10 p-4 flex items-center gap-2">
+                <span className="material-symbols-outlined text-tertiary">warning</span>
+                <p className="text-tertiary">{result.answer_error}</p>
+              </div>
             )}
 
-            {/* Visual Data Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <SentimentMiniChart summary={result.structured_insight.sentiment_summary} />
-              <TrendingList trends={result.structured_insight.trends} />
+            {/* Structured Insight Visualization - AT TOP */}
+            {result.structured_insight && (
+              <div className="space-y-4">
+                {/* Headline */}
+                <HeadlineCard headline={result.structured_insight.headline} />
+
+                {/* Key Stats Grid */}
+                {result.structured_insight.key_stats.length > 0 && (
+                  <StatsGrid stats={result.structured_insight.key_stats} />
+                )}
+
+                {/* Visual Data Row */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <SentimentMiniChart summary={result.structured_insight.sentiment_summary} />
+                  <TrendingList trends={result.structured_insight.trends} />
+                </div>
+
+                {/* Takeaways and Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  <KeyTakeawaysList takeaways={result.structured_insight.key_takeaways} />
+                  <RecommendedActionsList actions={result.structured_insight.recommended_actions} />
+                </div>
+              </div>
+            )}
+
+            {/* Key Metrics */}
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary">analytics</span>
+                <h3 className="font-bold text-white text-lg">Key Metrics</h3>
+              </div>
+              <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-5">
+                <MetricsStrip metrics={result.metrics} />
+              </div>
             </div>
 
-            {/* Takeaways and Actions */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <KeyTakeawaysList takeaways={result.structured_insight.key_takeaways} />
-              <RecommendedActionsList actions={result.structured_insight.recommended_actions} />
-            </div>
-          </div>
-        )}
+            {/* Summary with markdown bold support */}
+            {result.summary && !result.structured_insight && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">summarize</span>
+                  <h3 className="font-bold text-white text-lg">Summary</h3>
+                </div>
+                <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-5">
+                  <div className="space-y-2">
+                    {result.summary.split('\n').map((line, i) => {
+                      const trimmed = line.trim()
+                      if (!trimmed) return null
+                      // Check for bullet points
+                      if (trimmed.startsWith('•') || trimmed.startsWith('-')) {
+                        return (
+                          <div key={i} className="flex items-start gap-2">
+                            <span className="text-primary mt-1">•</span>
+                            <p className="text-white leading-relaxed">{renderWithBold(trimmed.slice(1).trim())}</p>
+                          </div>
+                        )
+                      }
+                      return <p key={i} className="text-white leading-relaxed">{renderWithBold(trimmed)}</p>
+                    })}
+                  </div>
+                </div>
+              </div>
+            )}
 
-        {/* Fallback Summary (if no structured insight) */}
-        {result.summary && !result.structured_insight && (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">summarize</span>
-              <h3 className="font-bold text-white text-lg">Summary</h3>
-            </div>
-            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-5">
-              <p className="text-white leading-relaxed">{result.summary}</p>
-            </div>
-          </div>
-        )}
+            {/* Narrative Clusters - moved up */}
+            {result.clusters.length >= 2 && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">hub</span>
+                  <h3 className="font-bold text-white text-lg">Narrative Clusters</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {result.clusters.slice(0, 4).map((cluster, i) => (
+                    <NarrativeClusterCard key={`${cluster.label}-${i}`} cluster={cluster} />
+                  ))}
+                </div>
+              </div>
+            )}
 
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary">analytics</span>
-            <h3 className="font-bold text-white text-lg">Key Metrics</h3>
-          </div>
-          <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-5">
-            <MetricsStrip metrics={result.metrics} />
-          </div>
-        </div>
-
-        {result.retrieved_posts.length > 0 && (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">format_quote</span>
-              <h3 className="font-bold text-white text-lg">Evidence Posts</h3>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              {result.retrieved_posts.slice(0, 5).map((post) => (
-                <EvidencePostCard key={post.id} post={post} />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {result.clusters.length >= 2 && (
-          <div className="flex flex-col gap-3">
-            <div className="flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">hub</span>
-              <h3 className="font-bold text-white text-lg">Narrative Clusters</h3>
-            </div>
-            <div className="grid grid-cols-1 gap-4">
-              {result.clusters.slice(0, 4).map((cluster, i) => (
-                <NarrativeClusterCard key={`${cluster.label}-${i}`} cluster={cluster} />
-              ))}
-            </div>
-          </div>
-        )}
+            {/* Evidence Posts - MOVED TO BOTTOM */}
+            {result.retrieved_posts.length > 0 && (
+              <div className="flex flex-col gap-3">
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">format_quote</span>
+                  <h3 className="font-bold text-white text-lg">Evidence Posts</h3>
+                </div>
+                <div className="grid grid-cols-1 gap-4">
+                  {result.retrieved_posts.slice(0, 5).map((post) => (
+                    <EvidencePostCard key={post.id} post={post} />
+                  ))}
+                </div>
+              </div>
+            )}
 
         {(() => {
           const total = result.metrics.total_retrieved.toLocaleString()

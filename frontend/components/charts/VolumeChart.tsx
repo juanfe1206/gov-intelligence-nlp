@@ -89,7 +89,7 @@ export default function VolumeChart({ data }: Props) {
               // Parse ISO date string as local date to avoid UTC timezone issues
               const [year, month, day] = v.split('-').map(Number)
               const date = new Date(year, month - 1, day)
-              return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+              return date.toLocaleDateString('en-GB', { month: 'short', day: 'numeric' })
             }}
             axisLine={false}
             tickLine={false}
@@ -118,7 +118,7 @@ export default function VolumeChart({ data }: Props) {
                 return (
                   <div className="p-2">
                     <p className="text-white font-medium mb-1">
-                      {date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {date.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
                     <p className="text-primary text-lg font-bold">{count.toLocaleString()} posts</p>
                     {isPeak && <p className="text-xs text-secondary mt-1">🔥 Peak activity day</p>}

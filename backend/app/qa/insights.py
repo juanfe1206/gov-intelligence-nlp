@@ -102,13 +102,13 @@ Generate a JSON response with this exact structure:
 }}
 
 Guidelines:
-- headline: 1 sentence, max 15 words, impactful
-- key_stats: 2-4 stats that directly answer the question
-- trends: 1-3 trending themes from the subtopics
-- key_takeaways: 2-3 bullets, mix of insight types
-- recommended_actions: 1-2 high-value actions
-- Be specific and cite numbers from the evidence
-- Focus on what a politician needs to know"""
+- headline: 1 sentence, max 12 words, bold key numbers
+- key_stats: 2-3 stats maximum, bold the values
+- trends: 1-2 trends maximum, keep labels under 4 words
+- key_takeaways: 2-3 bullets maximum, bold key phrases; each bullet 1 sentence max
+- recommended_actions: 1-2 actions maximum, priority high only
+- CRITICAL: All text fields must be concise. Use **bold** for key numbers and phrases.
+- Avoid long sentences. Prefer bullet format with bold highlights."""
 
     try:
         client = get_openai_client()
