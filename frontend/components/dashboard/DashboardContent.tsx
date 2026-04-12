@@ -12,7 +12,7 @@ import ComparisonPanel from './ComparisonPanel'
 import SpikeAlertBanner from './SpikeAlertBanner'
 import KpiCards from './KpiCards'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
+const API_BASE = (process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000').replace(/\/$/, '')
 
 // Type definitions
 interface VolumeData {
