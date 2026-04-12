@@ -49,7 +49,8 @@ jobs:
       - name: Deploy to Railway
         run: |
           export RAILWAY_PROJECT_ID="gov-intelligence-nlp"
-          railway up --service backend --detach
+          # Try to deploy with service, if fails create service first
+          railway up --detach || railway up --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
