@@ -131,7 +131,7 @@ export default function NetSentimentChart({ data }: Props) {
                 const date = new Date(y, m - 1, d)
                 return (
                   <div className="p-2">
-                    <p className="text-white font-medium mb-1">{date.toLocaleDateString()}</p>
+                    <p className="text-white font-medium mb-1">{date.toLocaleDateString('en-GB')}</p>
                     <p className="text-secondary text-xs">Positive: {data.positive.toLocaleString()}</p>
                     <p className="text-error text-xs">Negative: {data.negative.toLocaleString()}</p>
                     <p className={`text-xs font-bold mt-1 ${sentimentScore > 0 ? 'text-secondary' : sentimentScore < 0 ? 'text-error' : 'text-tertiary'}`}>
