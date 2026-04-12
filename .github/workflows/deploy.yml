@@ -46,13 +46,10 @@ jobs:
       - name: Install Railway CLI
         run: npm install -g @railway/cli
 
-      - name: Link Railway Project
-        run: railway link --project gov-intelligence-nlp
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
       - name: Deploy to Railway
-        run: railway up --service backend --detach
+        run: |
+          export RAILWAY_PROJECT_ID="gov-intelligence-nlp"
+          railway up --service backend --detach
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
