@@ -95,12 +95,12 @@ export default function SpikeAlertBanner({ filters }: Props) {
 
   return (
     <div className="rounded-xl border border-error/20 bg-error-container/5 p-5 shadow-lg">
-      <div className="flex items-center gap-3 mb-4">
-        <span className="material-symbols-outlined text-error text-xl animate-pulse">crisis_alert</span>
-        <span className="text-error font-bold text-base">
-          Spike Alerts
-        </span>
-        <span className="text-on-surface-variant text-sm">
+      <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:gap-3">
+        <div className="flex items-center gap-2">
+          <span className="material-symbols-outlined text-error text-xl animate-pulse">crisis_alert</span>
+          <span className="text-base font-bold text-error">Spike Alerts</span>
+        </div>
+        <span className="text-sm text-on-surface-variant">
           {spikes.length} topic{spikes.length !== 1 ? 's' : ''} flagged
         </span>
       </div>
@@ -108,25 +108,27 @@ export default function SpikeAlertBanner({ filters }: Props) {
         {spikes.map((alert, i) => (
           <div
             key={`${alert.topic}-${alert.spike_type}-${i}`}
-            className="flex items-center justify-between rounded-lg border border-outline-variant/10 bg-surface-container p-4 hover:border-error/30 transition-colors"
+            className="flex flex-col gap-3 rounded-lg border border-outline-variant/10 bg-surface-container p-4 transition-colors hover:border-error/30 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div className="flex items-center gap-4">
-              <div className={`flex items-center gap-2 px-2 py-1 rounded-full text-xs font-bold ${
+            <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+              <div className={`flex w-fit shrink-0 items-center gap-2 rounded-full px-2 py-1 text-xs font-bold ${
                 alert.spike_type === 'volume'
-                  ? 'bg-primary/10 text-primary border border-primary/20'
-                  : 'bg-error/10 text-error border border-error/20'
+                  ? 'border border-primary/20 bg-primary/10 text-primary'
+                  : 'border border-error/20 bg-error/10 text-error'
               }`}>
                 <span className="material-symbols-outlined text-xs">
                   {alert.spike_type === 'volume' ? 'trending_up' : 'sentiment_very_dissatisfied'}
                 </span>
                 {alert.spike_type === 'volume' ? 'Volume' : 'Sentiment'}
               </div>
-              <span className="text-white font-medium">
-                {alert.topic_label}
-              </span>
-              <span className="text-on-surface-variant text-sm">
-                {formatMagnitude(alert)} in last {alert.window_hours}h
-              </span>
+              <div className="min-w-0 space-y-1">
+                <span className="block font-medium text-white">
+                  {alert.topic_label}
+                </span>
+                <span className="block text-sm text-on-surface-variant">
+                  {formatMagnitude(alert)} in last {alert.window_hours}h
+                </span>
+              </div>
             </div>
             <button
               onClick={() => {
@@ -134,7 +136,7 @@ export default function SpikeAlertBanner({ filters }: Props) {
                 const q = encodeURIComponent(alert.suggested_question)
                 router.push(`/qa?topic=${t}&question=${q}`)
               }}
-              className="px-4 py-2 rounded-full text-sm font-medium bg-primary-container text-white hover:bg-primary-container/90 transition-colors flex items-center gap-2"
+              className="flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-container/90 sm:w-auto sm:py-2"
             >
               <span className="material-symbols-outlined text-xs">search</span>
               Investigate

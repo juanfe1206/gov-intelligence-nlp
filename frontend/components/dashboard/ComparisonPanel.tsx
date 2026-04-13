@@ -233,8 +233,8 @@ export default function ComparisonPanel({ filters }: Props) {
     return (
       <div className="bg-surface-container-low/50 rounded-lg border border-outline-variant/10 p-6 text-center">
         <span className="material-symbols-outlined text-on-surface-variant text-4xl mb-2">groups</span>
-        <p className="text-on-surface-variant">
-          Select at least two parties in "Compare Parties" to view a side-by-side comparison.
+               <p className="text-on-surface-variant">
+          Select at least two parties in the party compare control to view a side-by-side comparison.
         </p>
       </div>
     )

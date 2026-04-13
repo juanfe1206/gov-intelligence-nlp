@@ -83,7 +83,7 @@ function PostCard({ post }: { post: PostItem }) {
   }
 
   return (
-    <div className="rounded-lg border border-outline-variant/10 bg-surface-container p-5 flex flex-col gap-3 hover:border-outline-variant/30 transition-colors">
+    <div className="flex flex-col gap-3 rounded-lg border border-outline-variant/10 bg-surface-container p-4 transition-colors hover:border-outline-variant/30 sm:p-5">
       {/* Metadata row */}
       <div className="flex flex-wrap items-center gap-3">
         <span className="text-on-surface-variant text-xs font-medium uppercase tracking-wider">{post.platform}</span>
@@ -219,13 +219,13 @@ export default function PostsPanel({ filters }: Props) {
   }
 
   return (
-    <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
-      <div className="flex items-center justify-between mb-6">
+    <div className="rounded-lg border border-outline-variant/10 bg-surface-container-low p-4 shadow-xl sm:p-6">
+      <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">forum</span>
-          <h3 className="font-bold text-white text-lg">Representative Posts</h3>
+          <h3 className="text-lg font-bold text-white">Representative Posts</h3>
         </div>
-        <span className="text-on-surface-variant text-sm">
+        <span className="text-sm text-on-surface-variant">
           Showing {posts.length} of {(data?.total ?? 0).toLocaleString()}
         </span>
       </div>

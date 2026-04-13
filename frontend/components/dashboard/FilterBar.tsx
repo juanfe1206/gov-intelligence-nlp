@@ -78,7 +78,7 @@ function TimeRangeSelect({ startDate, endDate, onChange }: TimeRangeProps) {
           onChange(s, en)
         }
       }}
-      className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary"
+      className="w-full rounded-full border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-sm font-medium text-on-surface transition-colors hover:border-outline focus:border-primary focus:outline-none sm:w-auto sm:min-w-[10rem] sm:py-2"
     >
       {PRESETS.map(({ label, days }) => (
         <option key={days} value={days}>{label}</option>
@@ -119,14 +119,6 @@ export default function FilterBar({ filters, onChange }: Props) {
     onChange({ topic: '', subtopic: '', target: '', platform: '', startDate, endDate, selectedParties: [] })
   }
 
-  function handlePartyToggle(partyName: string) {
-    const current = filters.selectedParties || []
-    const updated = current.includes(partyName)
-      ? current.filter((p) => p !== partyName)
-      : [...current, partyName]
-    onChange({ ...filters, selectedParties: updated })
-  }
-
   const targets = taxonomy
     ? [
         ...taxonomy.targets.parties,
@@ -144,11 +136,11 @@ export default function FilterBar({ filters, onChange }: Props) {
     filters.endDate !== defaultDates.endDate
 
   return (
-    <div className="flex flex-wrap gap-3 items-center">
+    <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <select
         value={filters.topic}
         onChange={(e) => handleTopicChange(e.target.value)}
-        className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary"
+        className="w-full rounded-full border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-sm font-medium text-on-surface transition-colors hover:border-outline focus:border-primary focus:outline-none sm:w-auto sm:min-w-[10rem] sm:py-2"
       >
         <option value="">All Topics</option>
         {taxonomy?.topics.map((t) => (
@@ -160,7 +152,7 @@ export default function FilterBar({ filters, onChange }: Props) {
         value={filters.subtopic}
         onChange={(e) => onChange({ ...filters, subtopic: e.target.value })}
         disabled={!filters.topic}
-        className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-full border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-sm font-medium text-on-surface transition-colors hover:border-outline focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto sm:min-w-[10rem] sm:py-2"
       >
         <option value="">All Subtopics</option>
         {subtopics.map((s) => (
@@ -171,7 +163,7 @@ export default function FilterBar({ filters, onChange }: Props) {
       <select
         value={filters.target}
         onChange={(e) => onChange({ ...filters, target: e.target.value })}
-        className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary"
+        className="w-full rounded-full border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-sm font-medium text-on-surface transition-colors hover:border-outline focus:border-primary focus:outline-none sm:w-auto sm:min-w-[12rem] sm:py-2"
       >
         <option value="">All Parties / Leaders</option>
         {targets.map((t) => (
@@ -182,48 +174,13 @@ export default function FilterBar({ filters, onChange }: Props) {
       <select
         value={filters.platform}
         onChange={(e) => onChange({ ...filters, platform: e.target.value })}
-        className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary"
+        className="w-full rounded-full border border-outline-variant/20 bg-surface-container px-3 py-2.5 text-sm font-medium text-on-surface transition-colors hover:border-outline focus:border-primary focus:outline-none sm:w-auto sm:min-w-[9rem] sm:py-2"
       >
         <option value="">All Platforms</option>
         {platforms.map((p) => (
           <option key={p} value={p}>{p}</option>
         ))}
       </select>
-
-      {/* Party multi-select dropdown */}
-      <div className="relative group">
-        <button
-          type="button"
-          className="px-3 py-2 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:border-outline transition-colors focus:outline-none focus:border-primary min-w-[160px] text-left flex items-center justify-between gap-2"
-        >
-          <span>
-            {(filters.selectedParties?.length ?? 0) === 0
-              ? 'Compare Parties'
-              : `${filters.selectedParties.length} selected`}
-          </span>
-          <span className="material-symbols-outlined text-sm">expand_more</span>
-        </button>
-        <div className="absolute top-full left-0 mt-2 w-64 bg-surface-container-high border border-outline-variant/20 rounded-xl shadow-2xl hidden group-hover:block z-50 p-3">
-          <p className="text-on-surface-variant text-xs font-bold uppercase tracking-wider mb-2 px-2">Select parties to compare:</p>
-          {targets.map((t) => {
-            const isSelected = filters.selectedParties?.includes(t.name) ?? false
-            return (
-              <label
-                key={t.name}
-                className="flex items-center gap-3 px-2 py-1.5 hover:bg-surface-container rounded-lg cursor-pointer"
-              >
-                <input
-                  type="checkbox"
-                  checked={isSelected}
-                  onChange={() => handlePartyToggle(t.name)}
-                  className="rounded border-outline-variant"
-                />
-                <span className="text-sm text-on-surface">{t.label}</span>
-              </label>
-            )
-          })}
-        </div>
-      </div>
 
       <TimeRangeSelect
         startDate={filters.startDate}
@@ -234,7 +191,7 @@ export default function FilterBar({ filters, onChange }: Props) {
       {hasActiveFilters && (
         <button
           onClick={handleClear}
-          className="px-4 py-2 rounded-full text-sm font-medium border border-outline-variant/20 text-on-surface-variant hover:text-white hover:bg-surface-container-high transition-colors flex items-center gap-2"
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-outline-variant/20 px-4 py-2.5 text-sm font-medium text-on-surface-variant transition-colors hover:bg-surface-container-high hover:text-white sm:w-auto sm:py-2"
         >
           <span className="material-symbols-outlined text-sm">close</span>
           Clear filters

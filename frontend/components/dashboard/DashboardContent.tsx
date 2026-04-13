@@ -8,7 +8,6 @@ import SmartDateChart from '@/components/charts/SmartDateChart'
 import FilterBar, { FilterState, getDefaultDates } from './FilterBar'
 import TopicsPanel from './TopicsPanel'
 import PostsPanel from './PostsPanel'
-import ComparisonPanel from './ComparisonPanel'
 import SpikeAlertBanner from './SpikeAlertBanner'
 import KpiCards from './KpiCards'
 
@@ -47,7 +46,6 @@ export default function DashboardContent() {
   const [copied, setCopied] = useState(false)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
   const copyResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
 
   // Build export URL from current filters
   const exportUrl = useMemo(() => {
@@ -239,12 +237,9 @@ export default function DashboardContent() {
     <div className="space-y-8">
       {/* Header Section */}
       <section className="max-w-3xl">
-        <h1 className="text-4xl font-extrabold tracking-tight text-white mb-2">
+        <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-4xl mb-2">
           Intelligence Dashboard
         </h1>
-        <p className="text-on-surface-variant text-lg">
-          {filters.startDate} – {filters.endDate}
-        </p>
       </section>
 
       {/* Filters */}
@@ -265,46 +260,45 @@ export default function DashboardContent() {
       <SpikeAlertBanner filters={filters} />
 
       {/* Action Buttons */}
-      <div className="flex justify-end gap-3">
+      <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
         <button
           onClick={handleCopySummary}
-          className="px-4 py-2.5 rounded-full text-sm font-medium border border-outline-variant/20 text-on-surface hover:text-white hover:bg-surface-container transition-colors flex items-center gap-2"
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-outline-variant/20 px-4 py-2.5 text-sm font-medium text-on-surface transition-colors hover:bg-surface-container hover:text-white sm:w-auto"
         >
           <span className="material-symbols-outlined text-sm">{copied ? 'check' : 'content_copy'}</span>
           {copied ? 'Copied!' : 'Copy summary'}
         </button>
         <button
           onClick={handleExport}
-          className="px-4 py-2.5 rounded-full text-sm font-medium bg-primary-container text-white hover:bg-primary-container/90 transition-colors flex items-center gap-2"
+          className="flex w-full items-center justify-center gap-2 rounded-full bg-primary-container px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-primary-container/90 sm:w-auto"
         >
           <span className="material-symbols-outlined text-sm">download</span>
           Export
         </button>
       </div>
       {actionMessage && (
-        <p className="text-on-surface-variant text-sm text-right">{actionMessage}</p>
+        <p className="text-on-surface-variant text-sm text-center sm:text-right">{actionMessage}</p>
       )}
 
       {!isEmpty && (
         <>
           {/* Charts Grid - Reorganized for actionable insights */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             {/* Net Sentiment Chart - Most important for politicians */}
-            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+            <div className="min-w-0 rounded-lg border border-outline-variant/10 bg-surface-container-low p-4 shadow-xl sm:p-6">
               <NetSentimentChart data={sentimentData?.data ?? []} />
             </div>
 
             {/* Sentiment Distribution Chart */}
-            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+            <div className="min-w-0 rounded-lg border border-outline-variant/10 bg-surface-container-low p-4 shadow-xl sm:p-6">
               <SentimentChart data={sentimentData?.data ?? []} />
             </div>
 
             {/* Smart Activity Timeline with anomaly detection */}
-            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+            <div className="min-w-0 rounded-lg border border-outline-variant/10 bg-surface-container-low p-4 shadow-xl sm:p-6">
               <SmartDateChart
                 data={sentimentData?.data ?? []}
                 onDateSelect={(date) => {
-                  setSelectedDate(date)
                   setActionMessage(`Selected ${new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} — scroll to posts`)
                   // Scroll to posts section
                   document.getElementById('posts-section')?.scrollIntoView({ behavior: 'smooth' })
@@ -313,12 +307,12 @@ export default function DashboardContent() {
             </div>
 
             {/* Engagement Volume Chart */}
-            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+            <div className="min-w-0 rounded-lg border border-outline-variant/10 bg-surface-container-low p-4 shadow-xl sm:p-6">
               <VolumeChart data={volumeData?.data ?? []} />
             </div>
 
             {/* Key Insights Card */}
-            <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+            <div className="min-w-0 rounded-lg border border-outline-variant/10 bg-surface-container-low p-4 shadow-xl sm:p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="material-symbols-outlined text-primary">lightbulb</span>
                 <h3 className="font-bold text-white text-base">Key Insights</h3>
@@ -420,9 +414,6 @@ export default function DashboardContent() {
         onTopicSelect={handleTopicSelect}
         onClearTopic={handleClearTopic}
       />
-
-      {/* Comparison Panel */}
-      <ComparisonPanel filters={filters} />
 
       {/* Posts Panel */}
       <div id="posts-section">

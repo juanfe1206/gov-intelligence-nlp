@@ -17,30 +17,45 @@ function MaterialIcon({ name }: { name: string }) {
   );
 }
 
-export default function LeftNav() {
+type LeftNavProps = {
+  id?: string;
+  mobileOpen?: boolean;
+  onNavigate?: () => void;
+};
+
+export default function LeftNav({
+  id,
+  mobileOpen = false,
+  onNavigate,
+}: LeftNavProps) {
   const pathname = usePathname();
 
   return (
-    <aside className="fixed left-0 top-0 h-screen flex flex-col p-6 z-40 bg-surface w-72 rounded-r-none border-r-0">
-      {/* Logo */}
-      <div className="text-xl font-extrabold text-white mb-8 tracking-tight">
+    <aside
+      id={id}
+      className={`fixed left-0 top-0 z-50 flex h-screen w-[min(18rem,88vw)] flex-col border-r-0 bg-surface p-5 shadow-2xl transition-transform duration-200 ease-out sm:p-6 md:z-40 md:w-72 md:translate-x-0 md:shadow-none ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+      }`}
+      aria-label="Main navigation"
+    >
+      <div className="mb-8 text-xl font-extrabold tracking-tight text-white">
         Gov Intelligence
       </div>
 
-      {/* Main Navigation */}
-      <nav className="flex-1 space-y-2">
+      <nav className="flex-1 space-y-2" role="navigation">
         {navItems.map(({ label, href, icon }) => {
           const isActive = pathname.startsWith(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex items-center gap-3 px-6 py-3 rounded-full transition-all duration-200 font-medium text-sm
-                ${isActive
+              className={`flex items-center gap-3 rounded-full px-5 py-3 text-sm font-medium transition-all duration-200 sm:px-6 ${
+                isActive
                   ? "bg-primary-container text-white shadow-[0_0_20px_rgba(98,0,238,0.3)]"
                   : "text-on-surface-variant hover:bg-surface-container-high hover:text-white"
-                }`}
+              }`}
               aria-current={isActive ? "page" : undefined}
+              onClick={() => onNavigate?.()}
             >
               <MaterialIcon name={icon} />
               <span>{label}</span>
@@ -48,17 +63,6 @@ export default function LeftNav() {
           );
         })}
       </nav>
-
-      {/* Bottom Actions */}
-      <div className="mt-auto space-y-2 pt-6">
-        <Link
-          href="#"
-          className="flex items-center gap-3 text-on-surface-variant px-6 py-3 hover:bg-surface-container-high hover:text-white rounded-full transition-colors font-medium text-sm"
-        >
-          <MaterialIcon name="help_outline" />
-          <span>Support</span>
-        </Link>
-      </div>
     </aside>
   );
 }

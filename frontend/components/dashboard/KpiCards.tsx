@@ -77,8 +77,8 @@ function KpiCard({ title, value, subtitle, trend, trendValue, icon, status, insi
         )}
       </div>
 
-      <div className="mb-1">
-        <span className="text-2xl font-bold text-white">{value}</span>
+      <div className="mb-1 min-w-0">
+        <span className="break-words text-2xl font-bold text-white">{value}</span>
         {subtitle && <span className="text-sm text-on-surface-variant ml-1">{subtitle}</span>}
       </div>
 

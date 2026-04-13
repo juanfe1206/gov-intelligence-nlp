@@ -167,7 +167,7 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
   }
 
   return (
-    <div className="bg-surface-container-low rounded-lg border border-outline-variant/10 p-6 shadow-xl">
+    <div className="rounded-lg border border-outline-variant/10 bg-surface-container-low p-4 shadow-xl sm:p-6">
       <div className="flex items-center gap-3 mb-6">
         {isDrillDown && (
           <button
@@ -197,8 +197,8 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
               }`}
               onClick={() => !isDrillDown && onTopicSelect(item.name)}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
+              <div className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <span className="font-medium text-white">{item.label}</span>
                   {!isDrillDown && item.name === mostNegativeName && (
                     <span className="px-2 py-0.5 rounded-full bg-error/10 text-error text-xs font-bold">
@@ -211,8 +211,8 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
-                  <span className="text-on-surface-variant text-sm">
+                <div className="flex shrink-0 flex-wrap items-center gap-2 sm:gap-3">
+                  <span className="text-sm text-on-surface-variant">
                     {item.count.toLocaleString()} posts
                   </span>
                   {/* Q&A investigate button — top-level only */}
@@ -224,7 +224,7 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
                         const q = encodeURIComponent(`What are people saying about ${item.label}?`)
                         router.push(`/qa?topic=${encodeURIComponent(item.name)}&question=${q}`)
                       }}
-                      className="px-3 py-1 rounded-full text-xs font-medium border border-outline-variant/20 text-on-surface-variant hover:text-white hover:border-primary transition-colors flex items-center gap-1"
+                      className="flex items-center gap-1 rounded-full border border-outline-variant/20 px-3 py-1 text-xs font-medium text-on-surface-variant transition-colors hover:border-primary hover:text-white"
                     >
                       <span className="material-symbols-outlined text-xs">chat</span>
                       Q&A
@@ -245,10 +245,10 @@ export default function TopicsPanel({ filters, onTopicSelect, onClearTopic }: Pr
                   <div className="bg-error" style={{ width: `${negW}%` }} />
                 )}
               </div>
-              <div className="flex gap-4 mt-2 text-xs">
-                <span className="text-secondary font-medium">{posW}% Positive</span>
-                <span className="text-tertiary font-medium">{neuW}% Neutral</span>
-                <span className="text-error font-medium">{negW}% Negative</span>
+              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+                <span className="font-medium text-secondary">{posW}% Positive</span>
+                <span className="font-medium text-tertiary">{neuW}% Neutral</span>
+                <span className="font-medium text-error">{negW}% Negative</span>
               </div>
             </div>
           )

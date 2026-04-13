@@ -280,7 +280,9 @@ function NarrativeClusterCard({ cluster }: { cluster: NarrativeCluster }) {
               key={post.id}
               className="border-l-2 border-primary/50 pl-3 text-on-surface-variant text-sm line-clamp-2 italic"
             >
-              "{post.original_text}"
+              {'\u201c'}
+              {post.original_text}
+              {'\u201d'}
             </blockquote>
           ))}
         </div>
