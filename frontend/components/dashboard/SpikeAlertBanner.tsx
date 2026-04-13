@@ -37,34 +37,41 @@ function formatMagnitude(alert: SpikeAlert): string {
 export default function SpikeAlertBanner({ filters }: Props) {
   const [spikes, setSpikes] = useState<SpikeAlert[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     const controller = new AbortController()
     let isActive = true
 
+    async function requestSpikes(params: URLSearchParams): Promise<SpikesResponse> {
+      const res = await fetch(`${API_BASE}/analytics/spikes?${params.toString()}`, {
+        signal: controller.signal,
+      })
+      if (!res.ok) throw new Error(`Spike endpoint returned ${res.status}`)
+      return res.json() as Promise<SpikesResponse>
+    }
+
     async function fetchSpikes() {
       setLoading(true)
-      setError(null)
       try {
         const params = new URLSearchParams()
         if (filters.platform) params.set('platform', filters.platform)
 
-        const res = await fetch(`${API_BASE}/analytics/spikes?${params.toString()}`, {
-          signal: controller.signal,
-        })
-        if (!res.ok) throw new Error('Failed to fetch spikes')
-        const json = (await res.json()) as SpikesResponse
+        let json: SpikesResponse
+        try {
+          json = await requestSpikes(params)
+        } catch {
+          // The spike feed is a non-blocking enhancement. Retry once,
+          // then fail silently to avoid flashing a noisy error banner.
+          await new Promise((resolve) => setTimeout(resolve, 400))
+          json = await requestSpikes(params)
+        }
         if (!isActive) return
         setSpikes(json.spikes)
-      } catch (err) {
-        if ((err as Error).name === 'AbortError') return
+      } catch {
         if (!isActive) return
+        if (controller.signal.aborted) return
         setSpikes([])
-        setError(
-          err instanceof Error ? err.message : 'Failed to load spike alerts',
-        )
       } finally {
         if (!isActive) return
         setLoading(false)
@@ -79,17 +86,6 @@ export default function SpikeAlertBanner({ filters }: Props) {
   }, [filters.platform])
 
   if (loading) return null
-
-  if (error) {
-    return (
-      <div className="rounded-lg border border-error/20 bg-error-container/10 p-4">
-        <p className="text-error flex items-center gap-2">
-          <span className="material-symbols-outlined">error</span>
-          {error}
-        </p>
-      </div>
-    )
-  }
 
   if (spikes.length === 0) return null
 
