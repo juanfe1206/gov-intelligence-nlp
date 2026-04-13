@@ -18,9 +18,16 @@ class TwitterFileConnector(BaseConnector):
 
     Twitter JSONL format (one JSON object per line):
     {"id": "1234567890", "full_text": "...", "user": {"screen_name": "..."}, "created_at": "Thu Apr 01 12:00:00 +0000 2021", "lang": "es"}
+
+    Optional ``platform`` on each record (lowercase slug) is copied into
+    ``raw_posts.platform`` when it is one of ``ALLOWED_PLATFORMS``;
+    otherwise ``twitter`` is used (legacy files omit the field).
     """
 
     connector_id = "twitter-file"
+
+    #: Slugs allowed on JSONL rows for ``raw_posts.platform`` (DB max 100 chars).
+    ALLOWED_PLATFORMS = frozenset({"twitter", "bluesky", "reddit"})
 
     def __init__(self, file_path: str, after_timestamp: datetime | None = None, max_records: int = 0):
         """Initialize the connector.
@@ -125,15 +132,30 @@ class TwitterFileConnector(BaseConnector):
         if self._last_seen_at is None or created_at > self._last_seen_at:
             self._last_seen_at = created_at
 
+        platform = self._platform_from_raw(raw)
+
         return NormalizedPost(
             source=self.connector_id,
-            platform="twitter",
+            platform=platform,
             external_id=str(external_id),
             text=text,
             author=author,
             created_at=created_at,
             raw_payload=raw,
         )
+
+    @classmethod
+    def _platform_from_raw(cls, raw: dict[str, Any]) -> str:
+        """Map JSONL ``platform`` to a DB-safe slug (max 100 chars)."""
+        raw_value = raw.get("platform")
+        if raw_value is None or (isinstance(raw_value, str) and not raw_value.strip()):
+            return "twitter"
+        slug = str(raw_value).strip().lower()
+        if slug in {"x", "twitter/x"}:
+            slug = "twitter"
+        if slug in cls.ALLOWED_PLATFORMS:
+            return slug[:100]
+        return "twitter"
 
     def checkpoint(self) -> dict[str, Any]:
         """Return the current checkpoint state.

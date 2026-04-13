@@ -90,6 +90,32 @@ class TestTwitterFileConnector:
         assert result.platform == "twitter"
         assert result.source == "twitter-file"
 
+    def test_normalize_platform_bluesky_from_json(self, tmp_path):
+        """JSONL platform field is copied when allowed."""
+        test_file = tmp_path / "test.jsonl"
+        test_file.write_text(
+            '{"id": "1", "full_text": "Hola", "platform": "bluesky", '
+            '"created_at": "Thu Apr 01 12:00:00 +0000 2021"}'
+        )
+        connector = TwitterFileConnector(file_path=str(test_file))
+        raw = connector.fetch()[0]
+        result = connector.normalize(raw)
+        assert result is not None
+        assert result.platform == "bluesky"
+
+    def test_normalize_platform_unknown_defaults_to_twitter(self, tmp_path):
+        """Unknown platform slug falls back to twitter."""
+        test_file = tmp_path / "test.jsonl"
+        test_file.write_text(
+            '{"id": "1", "full_text": "Hola", "platform": "facebook", '
+            '"created_at": "Thu Apr 01 12:00:00 +0000 2021"}'
+        )
+        connector = TwitterFileConnector(file_path=str(test_file))
+        raw = connector.fetch()[0]
+        result = connector.normalize(raw)
+        assert result is not None
+        assert result.platform == "twitter"
+
     def test_normalize_with_id_str_fallback(self, tmp_path):
         """Test normalize uses id_str when id is absent."""
         test_file = tmp_path / "test.jsonl"
