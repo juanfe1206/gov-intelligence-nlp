@@ -88,16 +88,25 @@ export default function AdminContent() {
   const fetchJobs = useCallback(async () => {
     setLoading(true)
     setError(null)
+    const url = `${API_BASE}/jobs`
     try {
-      const res = await fetch(`${API_BASE}/jobs`)
+      const res = await fetch(url)
       if (!res.ok) {
-        throw new Error('Failed to fetch jobs')
+        const body = await res.text()
+        throw new Error(
+          `HTTP ${res.status} ${res.statusText}${body ? `: ${body.slice(0, 240)}` : ''}`,
+        )
       }
       const data: JobsListResponse = await res.json()
       setJobs(data.jobs)
       setTotal(data.total)
     } catch (err) {
-      setError('Unable to load jobs. Check that the backend is running.')
+      const hint =
+        err instanceof TypeError && String(err.message).includes('fetch')
+          ? ' (browser blocked the request: is the API URL correct, and is CORS_ALLOW_ORIGINS set for this page’s origin?)'
+          : ''
+      const detail = err instanceof Error ? err.message : String(err)
+      setError(`Unable to load jobs from ${url}. ${detail}${hint}`)
     } finally {
       setLoading(false)
     }

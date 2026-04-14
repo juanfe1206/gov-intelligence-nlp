@@ -216,7 +216,7 @@ export default function SmartDateChart({ data, onDateSelect }: Props) {
                     <p className="text-white font-medium mb-2">
                       {date.toLocaleDateString('en-GB', { weekday: 'long', month: 'short', day: 'numeric' })}
                     </p>
-                    <p className="text-primary text-lg font-bold">{entry.value.toLocaleString()} posts</p>
+                    <p className="text-white text-lg font-bold">{entry.value.toLocaleString()} posts</p>
                     <div className="flex gap-2 text-xs mt-2">
                       <span className="text-secondary">+{entry.positive}</span>
                       <span className="text-tertiary">~{entry.neutral}</span>

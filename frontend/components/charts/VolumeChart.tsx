@@ -120,7 +120,7 @@ export default function VolumeChart({ data }: Props) {
                     <p className="text-white font-medium mb-1">
                       {date.toLocaleDateString('en-GB', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </p>
-                    <p className="text-primary text-lg font-bold">{count.toLocaleString()} posts</p>
+                    <p className="text-white text-lg font-bold">{count.toLocaleString()} posts</p>
                     {isPeak && <p className="text-xs text-secondary mt-1">🔥 Peak activity day</p>}
                     <p className={`text-xs mt-1 ${vsAvg > 0 ? 'text-secondary' : 'text-error'}`}>
                       {vsAvg > 0 ? '+' : ''}{vsAvg.toFixed(0)}% vs avg

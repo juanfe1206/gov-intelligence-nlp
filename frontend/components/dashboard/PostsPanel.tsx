@@ -112,7 +112,7 @@ function PostCard({ post }: { post: PostItem }) {
       <div className="flex flex-col gap-2">
         <p
           ref={bodyRef}
-          className={`text-white text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}
+          className={`text-on-surface text-sm leading-relaxed ${expanded ? '' : 'line-clamp-3'}`}
         >
           {post.original_text}
         </p>
@@ -223,7 +223,7 @@ export default function PostsPanel({ filters }: Props) {
       <div className="mb-6 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">forum</span>
-          <h3 className="text-lg font-bold text-white">Representative Posts</h3>
+          <h3 className="text-lg font-bold text-on-surface">Representative Posts</h3>
         </div>
         <span className="text-sm text-on-surface-variant">
           Showing {posts.length} of {(data?.total ?? 0).toLocaleString()}
@@ -238,7 +238,7 @@ export default function PostsPanel({ filters }: Props) {
         <div className="flex justify-center mt-6">
           <button
             onClick={() => setLimit((prev) => prev + 20)}
-            className="px-6 py-2.5 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-white hover:bg-surface-container-high transition-colors flex items-center gap-2"
+            className="px-6 py-2.5 rounded-full text-sm font-medium bg-surface-container border border-outline-variant/20 text-on-surface hover:bg-surface-container-high transition-colors flex items-center gap-2"
           >
             <span className="material-symbols-outlined text-sm">expand_more</span>
             Load more ({((data?.total ?? 0) - posts.length).toLocaleString()} remaining)
